@@ -109,6 +109,8 @@ export type GameRewards = {
   fistAchieved: boolean;
   badge: string | null;
   collectible: string;
+  // +30 when this completion finishes Day 2 (Signal Watch + Twin Current).
+  day2BonusXp: number;
 };
 
 export type GameOutcome = {

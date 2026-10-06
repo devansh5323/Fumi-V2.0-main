@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PathfinderSweepGame } from "./games/pathfinder-sweep";
 import { SignalWatchGame } from "./games/signal-watch";
+import { TwinCurrentGame } from "./games/twin-current";
 import { PhoneFrame, PHONE_SCREEN_SIZE } from "./components/PhoneFrame";
 import { GamePicker, type GameEntry } from "./components/GamePicker";
 
@@ -23,6 +24,15 @@ const GAMES: GameEntry[] = [
     art: "/games/signal-watch/backgrounds/river-towers.jpg",
     artPosition: "50% 66%",
     accent: "#9bf0ff",
+  },
+  {
+    id: "twin-current",
+    title: "Twin Current",
+    tagline: "Track our sparks through the river and route them home.",
+    skills: "Divided attention · Task switching",
+    art: "/games/twin-current/backgrounds/river.jpg",
+    artPosition: "50% 40%",
+    accent: "#3DDC84",
   },
 ];
 
@@ -55,6 +65,7 @@ export default function Home() {
           {activeGame === null && <GamePicker games={GAMES} onPick={launch} />}
           {activeGame === "pathfinder-sweep" && <PathfinderSweepGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "signal-watch" && <SignalWatchGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
+          {activeGame === "twin-current" && <TwinCurrentGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
         </div>
       </PhoneFrame>
     </main>

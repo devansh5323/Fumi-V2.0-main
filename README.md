@@ -10,6 +10,7 @@ screen-based experience presented inside a phone-frame device mockup.
 |---|------|--------|-----------------|
 | 1 | Pathfinder Sweep | [`app/games/pathfinder-sweep/`](app/games/pathfinder-sweep/README.md) | Selective attention, visual scanning |
 | 2 | Signal Watch | [`app/games/signal-watch/`](app/games/signal-watch/README.md) | Sustained attention, signal detection |
+| 3 | Twin Current | [`app/games/twin-current/`](app/games/twin-current/README.md) | Divided attention, dynamic visual attention, task switching |
 
 ## Tech stack
 

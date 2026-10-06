@@ -1,11 +1,12 @@
 import type { GameOutcome } from "../types";
+import { DEFAULT_QUEST } from "../config";
 import { recordCompletion } from "../../../lib/dayProgress";
 
-const STORAGE_KEY = "fumi-signal-watch-results";
+const STORAGE_KEY = "fumi-twin-current-results";
 const MAX_STORED_RESULTS = 100;
 
 // The single seam a backend integration swaps for a real API call later.
-// Also records Signal Watch as complete for Day 2 (see app/lib/dayProgress).
+// Also records Twin Current as complete for its quest day (Day 2 bonus).
 export function reportGame(result: GameOutcome): void {
   if (typeof window === "undefined") return;
   try {
@@ -15,5 +16,5 @@ export function reportGame(result: GameOutcome): void {
   } catch {
     // Storage can fail (quota, private mode) — non-critical, fail silently.
   }
-  recordCompletion(2, "signal-watch");
+  recordCompletion(DEFAULT_QUEST.day, "twin-current");
 }

@@ -92,6 +92,8 @@ export const REWARDS = {
   // FIST = real-signal detection and decoy rejection both at or above this.
   fistThresholdPct: 90,
   collectible: "River Stone",
+  // Awarded once, when both Day 2 games (this + Twin Current) are complete.
+  day2BonusXp: 30,
   accessoryChoices: ["Signal Goggles", "River Cape", "Pulse Charm"],
 } as const;
 

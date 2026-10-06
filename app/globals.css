@@ -505,6 +505,36 @@ button {
   to { transform: translateY(3px) rotate(25deg); }
 }
 
+/* Twin Current — river current strips (slide by exactly one tile:
+   --tc-tile / --tc-tile-w), the gate splash, and the rule card flip. */
+@keyframes tc-flow-down {
+  from { transform: translateY(0); }
+  to { transform: translateY(var(--tc-tile)); }
+}
+
+@keyframes tc-flow-side {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--tc-tile-w)); }
+}
+
+@keyframes tc-splash {
+  0% { opacity: 0; transform: translateY(14px) scale(0.4); }
+  30% { opacity: 1; transform: translateY(0) scale(1.05); }
+  100% { opacity: 0; transform: translateY(-6px) scale(1.15); }
+}
+
+@keyframes tc-card-flip {
+  0% {
+    transform: rotateX(90deg) scale(0.9);
+  }
+  60% {
+    transform: rotateX(-12deg) scale(1.06);
+  }
+  100% {
+    transform: rotateX(0deg) scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

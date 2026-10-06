@@ -26,6 +26,7 @@ import { LivingScene } from "./components/LivingScene";
 import { FumiRaft } from "./components/FumiRaft";
 import { MistPuff, RelayBeam } from "./components/RelayFeedback";
 import { Typewriter } from "../../components/Typewriter";
+import { completesDay } from "../../lib/dayProgress";
 import { reportGame } from "./lib/sessionReporter";
 
 // start (title sign + Play) -> how-to (Fumi + signal types) -> playing (one
@@ -123,7 +124,7 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
       const next = stageIndex + 1;
       if (next >= stages.length) {
         const duration = Date.now() - startedAtRef.current - pausedTotalRef.current;
-        setOutcome(computeGameOutcome(ageBand, resultsRef.current, duration));
+        setOutcome(computeGameOutcome(ageBand, resultsRef.current, duration, completesDay(2, "signal-watch")));
         runTransition(() => setScreen("complete"), "Relay route restored!");
         return;
       }
@@ -621,6 +622,7 @@ function GameComplete({ activity, outcome, onPlayAgain, onFinish }: { activity: 
               <RewardPill icon="✨" label={`+${rewards.xp} XP`} />
               <RewardPill icon="🪙" label={`+${rewards.coins}`} />
               {rewards.badge && <RewardPill icon="🏅" label={rewards.badge} highlight />}
+              {rewards.day2BonusXp > 0 && <RewardPill icon="🌟" label={`+${rewards.day2BonusXp} XP Day 2 bonus`} highlight />}
             </div>
           </div>
         </div>

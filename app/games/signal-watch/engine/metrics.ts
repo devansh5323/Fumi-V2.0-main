@@ -76,7 +76,7 @@ function starsFor(m: SignalWatchMetrics): number {
   return (m.detectionAccuracyPct + m.distractorRejectionAccuracyPct) / 2 >= 75 ? 2 : 1;
 }
 
-function computeRewards(m: SignalWatchMetrics): GameRewards {
+function computeRewards(m: SignalWatchMetrics, earnsDay2Bonus: boolean): GameRewards {
   const fistAchieved = isFist(m);
   return {
     xp: REWARDS.completionXp,
@@ -84,10 +84,11 @@ function computeRewards(m: SignalWatchMetrics): GameRewards {
     fistAchieved,
     badge: fistAchieved ? REWARDS.fistBadge : null,
     collectible: REWARDS.collectible,
+    day2BonusXp: earnsDay2Bonus ? REWARDS.day2BonusXp : 0,
   };
 }
 
-export function computeGameOutcome(ageBand: AgeBand, all: StageResult[], gameplayDurationMs: number): GameOutcome {
+export function computeGameOutcome(ageBand: AgeBand, all: StageResult[], gameplayDurationMs: number, earnsDay2Bonus: boolean): GameOutcome {
   const stageResults = all.filter((s) => !s.isPractice);
   const metrics = computeMetrics(stageResults, gameplayDurationMs);
   return {
@@ -95,7 +96,7 @@ export function computeGameOutcome(ageBand: AgeBand, all: StageResult[], gamepla
     stageResults,
     metrics,
     starsEarned: starsFor(metrics),
-    rewards: computeRewards(metrics),
+    rewards: computeRewards(metrics, earnsDay2Bonus),
     accessoryChosen: null,
   };
 }
