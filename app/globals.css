@@ -1,0 +1,516 @@
+/*
+  FUMI design system — dark cosmic/forest palette, extracted from the live
+  FUMI marketing site's compiled CSS. Plus Jakarta Sans for display/headings,
+  Inter for body text.
+*/
+:root {
+  --color-midnight: #07061c;
+  --color-deep-purple: #100b35;
+  --color-ink: #17153b;
+  --color-purple: #7c3aed;
+  --color-violet: #9b5cff;
+  --color-lavender: #c4b5fd;
+  --color-soft: #f6f5ff;
+  --color-gold: #f0a63c;
+  --color-white: #ffffff;
+
+  --gradient-cta: linear-gradient(135deg, var(--color-purple), var(--color-violet));
+  --gradient-ambient: radial-gradient(circle, rgba(155, 92, 255, 0.35), transparent 70%);
+
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 24px;
+  --radius-pill: 9999px;
+
+  --shadow-card: 0 20px 40px rgba(16, 11, 53, 0.25);
+  --shadow-cta: 0 10px 24px rgba(124, 58, 237, 0.4);
+
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-midnight);
+  color: var(--color-soft);
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+button {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+/* Tactile press feedback for interactive buttons — a small, fast scale-down
+   on press reads as "premium/responsive" instead of static/flat. */
+.tap-scale {
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+.tap-scale:active {
+  transform: scale(0.96);
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes bubble-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes firefly-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+@keyframes tile-glow {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgba(61, 220, 132, 0));
+  }
+  50% {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 18px rgba(61, 220, 132, 0.9));
+  }
+  100% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 10px rgba(61, 220, 132, 0.6));
+  }
+}
+
+@keyframes tile-dissolve {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: scale(0.85);
+  }
+}
+
+@keyframes trail-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px rgba(240, 166, 60, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(240, 166, 60, 1));
+  }
+}
+
+@keyframes fumi-tail-wag {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+}
+
+@keyframes fumi-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-18deg);
+  }
+}
+
+@keyframes fog-drift {
+  0%,
+  100% {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(14px) translateY(-6px);
+  }
+}
+
+@keyframes float-up-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.8);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-34px) scale(1);
+  }
+}
+
+@keyframes shake-x {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(260px) rotate(340deg);
+  }
+}
+
+@keyframes star-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-20deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.2) rotate(8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes gold-shimmer {
+  0%,
+  100% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 0% 100%;
+  }
+}
+
+@keyframes rule-reminder-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Signal Watch — tower signal effects (rings, ripples, flash, sparkles,
+   drifting leaves, gem flare). */
+@keyframes sw-ring-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sw-ripple {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+@keyframes sw-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+@keyframes sw-sparkle {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.2);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.6);
+  }
+}
+
+@keyframes sw-leaf-drift {
+  0% {
+    opacity: 0;
+    transform: translate(-24px, 10px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(26px, -16px);
+  }
+}
+
+@keyframes sw-gem-flare {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* Signal Watch — living scene: drifting clouds, pouring waterfalls, river
+   current (strips slide by exactly one tile: --sw-tile / --sw-tile-w). */
+@keyframes sw-cloud-drift {
+  from {
+    transform: translateX(-240px);
+  }
+  to {
+    transform: translateX(420px);
+  }
+}
+
+@keyframes sw-flow-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--sw-tile));
+  }
+}
+
+@keyframes sw-flow-side {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--sw-tile-w));
+  }
+}
+
+@keyframes sw-mist {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.12);
+  }
+}
+
+/* Signal Watch — decoy effects (sunlight glare, bubbles, fish splash),
+   relay feedback (beam, mist puff, Fumi's raft) and unscored river life. */
+@keyframes sw-glare {
+  0% { opacity: 0; transform: scale(0.7) rotate(-8deg); }
+  40% { opacity: 1; transform: scale(1.05) rotate(0deg); }
+  100% { opacity: 0.9; transform: scale(1) rotate(4deg); }
+}
+
+@keyframes sw-bubble-rise {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-95px) scale(1.15); }
+}
+
+@keyframes sw-fish-leap {
+  0% { opacity: 0; transform: translate(26px, 6px) rotate(-50deg); }
+  15% { opacity: 1; }
+  50% { transform: translate(4px, -62px) rotate(0deg); }
+  85% { opacity: 1; transform: translate(-20px, 0) rotate(50deg); }
+  100% { opacity: 0; transform: translate(-22px, 8px) rotate(60deg); }
+}
+
+@keyframes sw-droplet {
+  0% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)); }
+}
+
+@keyframes sw-mist-puff {
+  0% { opacity: 0; transform: scale(0.4); }
+  35% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes sw-beam-draw {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes sw-beam-fade {
+  0%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes sw-beam-arrive {
+  0% { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+@keyframes sw-fumi-hop {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-18px) scale(1.06); }
+  60% { transform: translateY(0) scale(0.97, 1.03); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes sw-raft-bob {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-4px) rotate(1.5deg); }
+}
+
+@keyframes sw-raft-ripple {
+  0% { opacity: 0.6; transform: scale(0.9); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+
+@keyframes sw-banner {
+  0% { opacity: 0; transform: translateY(-8px); }
+  12% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes sw-ambient-ripple {
+  0% { opacity: 0; transform: scale(0.2); }
+  10% { opacity: 0.8; }
+  50% { opacity: 0; transform: scale(1.8); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+@keyframes sw-ambient-bubble {
+  0% { opacity: 0; transform: translateY(0); }
+  10% { opacity: 1; }
+  60% { opacity: 0.9; transform: translateY(-14px); }
+  70%, 100% { opacity: 0; transform: translateY(-16px); }
+}
+
+@keyframes sw-ambient-fish {
+  0%, 78% { opacity: 0; transform: translate(-14px, 8px) rotate(-40deg); }
+  82% { opacity: 1; transform: translate(-10px, -8px) rotate(-30deg); }
+  90% { transform: translate(0, -22px) rotate(0deg); }
+  97% { opacity: 1; transform: translate(12px, 2px) rotate(40deg); }
+  100% { opacity: 0; transform: translate(14px, 8px) rotate(45deg); }
+}
+
+@keyframes sw-ambient-fish-ripple {
+  0%, 96% { opacity: 0; transform: translateX(14px) scale(0.3); }
+  98% { opacity: 0.9; transform: translateX(14px) scale(0.7); }
+  100% { opacity: 0; transform: translateX(14px) scale(1.5); }
+}
+
+@keyframes sw-ambient-leaf {
+  from { transform: translateX(-30px); }
+  to { transform: translateX(420px); }
+}
+
+@keyframes sw-ambient-leaf-spin {
+  from { transform: translateY(-3px) rotate(-25deg); }
+  to { transform: translateY(3px) rotate(25deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
