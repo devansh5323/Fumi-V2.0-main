@@ -1,21 +1,11 @@
 "use client";
 
 import type { CargoSymbol } from "../types";
-import { ASSETS } from "../config";
+import { ASSETS, SYMBOL_NAME } from "../config";
 
-export const SYMBOL_LABEL: Record<CargoSymbol, string> = {
-  star: "star",
-  moon: "moon",
-  heart: "heart",
-  leaf: "leaf",
-  sun: "sun",
-  swirl: "swirl",
-  butterfly: "butterfly",
-  snowflake: "snowflake",
-};
+export const SYMBOL_LABEL = SYMBOL_NAME;
 
-// One of the design's 8 coloured symbols (shown on target balls during the
-// preview, and on the rule card).
+// One of the design's round symbol badges.
 export function SymbolIcon({ symbol, size }: { symbol: CargoSymbol; size: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element

@@ -1,17 +1,13 @@
 export type AgeBand = "6-10" | "11-16";
 
-// Cargo emblems (the design's 8 symbols). A target spark shows its emblem
-// during the reveal only; gates carry them permanently in a neutral colour.
-export type CargoSymbol = "star" | "moon" | "heart" | "leaf" | "sun" | "swirl" | "butterfly" | "snowflake";
+// The design's symbol set. Every ball carries one (so a symbol never gives
+// a target away); it's revealed only after the child selects the ball.
+export type CargoSymbol = "sun" | "moon" | "leaf" | "star" | "drop" | "heart" | "bolt" | "swirl" | "mountain";
 
 // "match": a spark goes through the gate showing its own emblem.
 // "swap": every emblem is sent to the NEXT emblem in the round's list
 // (with 2 emblems that's a plain swap; with 3 it's a rotation).
 export type RouteRule = "match" | "swap";
-
-// The glow colour Fumi marks each target with during the reveal. Indexed by
-// target slot, so the first target is always green, the second purple.
-export type TargetGlow = "green" | "purple" | "gold";
 
 export type SpeedTier = "slow" | "medium" | "fast";
 
@@ -20,9 +16,7 @@ export type Point = { x: number; y: number };
 export type SparkPlan = {
   sparkId: string;
   isTarget: boolean;
-  // Only set for targets.
-  cargo: CargoSymbol | null;
-  glow: TargetGlow | null;
+  cargo: CargoSymbol; // every ball carries one; revealed on selection
 };
 
 // Precomputed motion: frames[f][sparkIndex] at a fixed timestep. The last
@@ -35,7 +29,7 @@ export type MotionTrack = {
 export type RoundPlan = {
   roundIndex: number; // 0-based across the whole session, practice included
   isPractice: boolean;
-  label: string; // "Practice 1/4" | "Round 3/16"
+  label: string; // "How to Play 1/4" | "Round 3/16"
   sparks: SparkPlan[];
   targetCount: number;
   categories: CargoSymbol[]; // gate emblems in this round
@@ -44,8 +38,9 @@ export type RoundPlan = {
   ruleChanged: boolean; // differs from the previous round's rule
   speedPxPerSec: number;
   speedTier: SpeedTier;
-  motionMs: number;
-  motion: MotionTrack;
+  motionMs: number; // step 2: flowing before selection opens
+  selectMs: number; // step 3: balls keep flowing while the child selects
+  motion: MotionTrack; // covers motionMs + selectMs
 };
 
 export type PickOutcome = "correct-route" | "wrong-route" | "wrong-spark";
@@ -53,13 +48,14 @@ export type PickOutcome = "correct-route" | "wrong-route" | "wrong-spark";
 export type PickRecord = {
   sparkId: string;
   isTarget: boolean;
-  cargo: CargoSymbol | null;
-  gate: CargoSymbol;
+  cargo: CargoSymbol;
+  gate: CargoSymbol | null; // null if never routed
   outcome: PickOutcome;
-  // Since the gates appeared.
+  // Selection: since the balls stopped / since the previous selection.
   atMs: number;
-  // Since the previous pick (or since the gates appeared, for the first).
   sincePrevMs: number;
+  // Routing: since the rule appeared (null if never routed).
+  routedAtMs: number | null;
 };
 
 export type RoundResult = {

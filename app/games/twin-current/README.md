@@ -9,42 +9,77 @@ rule card names.
 Skills: divided attention, dynamic visual attention, task switching.
 Difficulty: medium → hard. Target length: about 4 minutes.
 
-## How a round plays
+The game opens straight into How to Play round 1; there is no intro screen.
+The progress bar shows 4 segments during How to Play, then 16 for the
+scored rounds.
+The gates stand across the channel heads from the start of every round.
 
-1. **Reveal (3 s).** Every ball is still. The targets turn into the
-   design's glowing balls (1st green, 2nd purple, 3rd yellow) and show a
-   symbol. Fumi marks each target with an arrow.
-2. **Fade (0.5 s).** The glow and symbol fade, so every ball is the same
-   blue ball. No target is highlighted again while they move.
-3. **Motion (5–6.5 s).** All sparks flow and cross paths, then stop.
-4. **Gates.** The design's neutral stone-and-wood gates appear across the
-   top of the river, with a rule card just below them. Fumi points at the card, never at the correct gate. The child
-   drags each remembered spark to a gate (or taps the spark, then taps a
-   gate).
-   - **MATCH:** each spark goes to the gate with its own emblem.
-   - **SWAP:** each spark goes to the other gate (with three gates, the
-     next one along).
+## How a round plays (the mockup's six steps)
 
-   Each round draws its 2 (or 3) symbols at random from the design's 8:
-   star, moon, heart, leaf, sun, swirl, butterfly, snowflake.
-5. **Result (1.1 s).** Any target the child missed lights up again briefly.
-6. **Flow (0.8 s).** The gates open, the stream surges, and the next round
-   starts with more or faster sparks.
+The top bar has only a pause button, the progress bar and a countdown
+chip. There's no visible step text; each step is announced to screen
+readers. The 2 glowing balls always start in opposite channels (left and
+right) and stay there. With 3 targets, both channels are always used.
 
-The child gets as many drags as there are targets. A wrong spark is logged
-and the round is never replayed. A wrong gate costs 10 energy in scored
-rounds only. Energy never ends the game.
+1. **Look (3 s).** The targets glow (1st gold, 2nd purple, 3rd green).
+   Every ball is still.
+2. **Watch (5–6.5 s).** All balls become identical bubbles and flow
+   through the river's two channels (the twin current), around the island
+   chain. Each ball moves at its own speed and turns at its own points, so
+   balls overtake and cross. Light trails follow every ball. No target is
+   highlighted while they move.
+3. **Select (timed).** The balls keep flowing, and the child taps the ones
+   they were following before the countdown ends (7 s → 5 s for ages
+   6–10, 6 s → 4 s for 11–16). A tapped ball stops where it was caught.
+   Taps can be undone until the last one is chosen. When the countdown
+   ends, the balls stop and the game waits for the child to finish
+   choosing. It never moves on by itself.
+4. **Reveal (1.1 s).** Each selected ball turns into its glowing symbol
+   badge. Every ball carries a symbol, so a revealed symbol never proves
+   the ball was a target.
+5. **Rule (1.5 s).** A white rule pill appears, e.g. "☀ Sun → Left Gate ·
+   ☾ Moon → Right Gate". Later rounds may swap it (Sun → Right Gate),
+   marked NEW RULE.
+6. **Gates.** The gold and purple stone arches (there all round) stand at
+   the heads of the two channels, each with a symbol on its keystone. The child drags each
+   selected ball through the gate the rule names (or taps the ball, then
+   the gate).
+
+After the last ball, any target the child missed briefly re-lights. Then
+the stream surges into the next round.
+
+A wrong ball is logged and the round is never replayed. A wrong gate costs
+10 energy in scored rounds only (energy is recorded in the results, but
+has no on-screen meter, as in the mockup).
+
+## Wrong ball selected
+
+1. **At the tap (step 3):** no feedback. A wrong pick looks exactly like a
+   right one, so the child can't trial-and-error their way to the targets.
+   Taps can still be undone until the last ball is chosen.
+2. **Step 4 (reveal):** each wrong ball shows a grey ✕. Each target the
+   child missed lights up in its preview colour, where it is, with a
+   "This one!" tag. The card says e.g. "One ball wasn't ours — the glowing
+   one was."
+3. **Steps 5–6:** wrong balls fade away. Only correctly found balls are
+   routed. If no correct ball was found, the rule and gates are skipped
+   and the round goes straight to the result ("You found 0 of 2").
+4. **Scoring:** each wrong ball is logged as `wrong-spark` (counted in
+   wrong balls selected), and the target it replaced is counted as missed.
+   There's no energy cost (energy is only for wrong gates), and the round
+   is never replayed.
 
 ## Rounds
 
-- **Practice (both age bands):** 4/2 MATCH, 5/2 MATCH, 6/2 MATCH, 6/2 SWAP
-  (sparks/targets). The last one demonstrates a rule change.
+- **How to Play (both age bands; shown as "How to Play 1/4"…):** 6/2 MATCH, 7/2 MATCH, 8/2 MATCH, 8/2 SWAP
+  (balls/targets), with a longer selection window. The last one
+  demonstrates a rule change.
 - **16 scored rounds.** Spark count, speed and motion time increase every
   round.
 
 | | 6–10 | 11–16 |
 |---|---|---|
-| Sparks | 6 → 8 | 8 → 10 |
+| Balls | 8 → 12 | 10 → 14 |
 | Targets / gate emblems | 2 / 2 | 2 / 2, then 3 / 3 from round 7 |
 | Speed (px/s) | 60 → 90 | 80 → 125 |
 | Rule switches | 3 | 6 |
@@ -75,21 +110,27 @@ rounds only. Energy never ends the game.
 
 ## Art
 
-All art is cut from the design sheet and upscaled 4× with Real-ESRGAN:
+All art is cut from the design mockup and upscaled 4× with Real-ESRGAN:
 
-- `backgrounds/river.jpg` (1170×2100): the painted river.
-  `backgrounds/river-mask.png` marks the water, so the animated current
-  only covers water.
-- `balls/`: blue (every ball after the preview), green, purple and yellow
-  (the targets' preview glow).
-- `symbols/`: the 8 coloured symbols. `gates/`: the 8 matching neutral
-  gates.
-- `effects/`: a splash (when a ball reaches a gate) and a water swirl
-  (under resting balls).
+- `backgrounds/river.jpg` (1170×2100): the mockup's step-4 scene, with
+  its painted balls removed. It's upscaled twice with Real-ESRGAN (4×, then
+  4× again from a half-size copy) for crisp edges, then given a local
+  contrast boost and sharpening. It's cropped tight and stretched about 10%
+  vertically, so the river fills the screen from just under the top bar.
+  `river-mask.png` marks the river and `falls-mask.png` the two waterfall
+  curtains: the river current flows, streaks pour down the falls, and mist
+  pulses where they land. Small clouds drift in the strip of sky at the top
+  only.
+- `balls/ball.png`: the default bubble.
+- `symbols/`: the 9 symbol badges (sun, moon, leaf, star, drop, heart,
+  bolt, swirl, mountain). Each round uses 2 (or 3) of them.
+- `gates/`: the gold and purple arches. The round's symbol badge is drawn
+  over each keystone; a third gate (11–16) is the purple arch, recoloured
+  teal.
 
-The balls move only inside the painted river. Its edges at each height
-are measured into `RIVER_EDGES` in `config.ts`; re-measure them if the
-background changes.
+Balls move only where `engine/waterMap.ts` allows. It's generated from
+`river-mask.png`, with ball centres kept 18 px from any shore.
+Regenerate it if the background changes.
 
 ## Structure
 
@@ -100,12 +141,14 @@ twin-current/
   index.ts              Public barrel
   engine/
     rng.ts                Seeded PRNG
-    motion.ts             Steering simulation, precomputed at 30fps per round
+    motion.ts             Channel-current simulation, precomputed at 30fps per round
+    waterMap.ts           Generated map of where a ball may move
     rules.ts              MATCH / SWAP gate mapping
     sessionPlanner.ts     Builds all 20 rounds (incl. motion) from a seed
     metrics.ts            Metrics, stars, FIST, rewards
   components/
-    RiverBackdrop, EnergySpark, RiverGate, RuleCard, SymbolIcon, TwinHud
+    RiverBackdrop (scene, clouds, current), EnergySpark (ball states + trail),
+    RiverGate (arch + keystone symbol), RuleCard (rule pill), StepHeader, SymbolIcon
   lib/
     sessionReporter.ts    Backend seam (localStorage) + Day 2 completion
 ```

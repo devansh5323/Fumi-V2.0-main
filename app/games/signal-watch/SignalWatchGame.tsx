@@ -5,9 +5,7 @@ import type { AgeBand, GameOutcome, SignalResult, StagePlan, StageResult, StrayT
 import {
   AGE_BAND_CONFIG,
   ASSETS,
-  CHILD_RULE_TEXT,
   HUD_HEIGHT,
-  NARRATION_TEXT,
   PLAY_AREA,
   RESPONSE_GRACE_MS,
   REWARDS,
@@ -15,23 +13,24 @@ import {
   START_CARD_TEXT,
   TOWERS,
   TUTORIAL_DEMO_MS,
+  TUTORIAL_GREETING,
+  HOW_TO_PLAY_GREETING,
+  REAL_GAME_GREETING,
   TUTORIAL_STEPS,
 } from "./config";
 import { buildSession, eventOnTower, liveTarget } from "./engine/schedule";
 import { computeGameOutcome } from "./engine/metrics";
 import { SignalEffect } from "./components/SignalEffect";
 import { SignalHud } from "./components/SignalHud";
-import { SignalTypesGuide } from "./components/SignalTypesGuide";
 import { LivingScene } from "./components/LivingScene";
-import { FumiRaft } from "./components/FumiRaft";
+import { FumiGuide } from "./components/FumiGuide";
 import { MistPuff, RelayBeam } from "./components/RelayFeedback";
-import { Typewriter } from "../../components/Typewriter";
 import { completesDay } from "../../lib/dayProgress";
 import { reportGame } from "./lib/sessionReporter";
 
-// start (title sign + Play) -> how-to (Fumi + signal types) -> playing (one
+// start (title sign + Play) -> playing (one
 // continuous scene: tutorial -> practice -> 3 scored blocks) -> complete.
-type GameScreen = "start" | "howto" | "playing" | "complete";
+type GameScreen = "start" | "playing" | "complete";
 type PlayPhase = "tutorial" | "stages";
 
 function generateSeed(): string {
@@ -55,11 +54,13 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
   const activity = AGE_BAND_CONFIG[ageBand].riverActivity;
 
   const [screen, setScreen] = useState<GameScreen>("start");
-  const [narrationDone, setNarrationDone] = useState(false);
   const [playPhase, setPlayPhase] = useState<PlayPhase>("tutorial");
   const [stageIndex, setStageIndex] = useState(0);
   const [activations, setActivations] = useState(0);
-  const [cheerKey, setCheerKey] = useState(0);
+  // Fumi's typed line in a speech bubble: shown right after Play (before
+  // the tutorial) and again before the How to Play round. She and the
+  // bubble leave before play resumes. null = Fumi not shown.
+  const [greeting, setGreeting] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [outcome, setOutcome] = useState<GameOutcome | null>(null);
   const [veil, setVeil] = useState<{ opacity: number; message: string | null }>({ opacity: 0, message: null });
@@ -85,13 +86,13 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
     resultsRef.current = [];
     pausedTotalRef.current = 0;
     setActivations(0);
-    setCheerKey(0);
     setStageIndex(0);
     setPlayPhase("tutorial");
     setPaused(false);
     runTransition(() => {
       startedAtRef.current = Date.now();
       setScreen("playing");
+      setGreeting(TUTORIAL_GREETING);
     });
   }, [runTransition]);
 
@@ -108,15 +109,18 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
     });
   }, []);
 
-  // Fumi reacts only to genuine relay activations; the route line only
-  // advances for scored ones.
+  // The route line advances for scored genuine relay activations.
   const handleActivation = useCallback((scored: boolean) => {
-    setCheerKey((k) => k + 1);
     if (scored) setActivations((n) => n + 1);
   }, []);
 
+  const handleGreetingDone = useCallback(() => setGreeting(null), []);
+
   const handleTutorialActivation = useCallback(() => handleActivation(false), [handleActivation]);
-  const handleTutorialDone = useCallback(() => setPlayPhase("stages"), []);
+  const handleTutorialDone = useCallback(() => {
+    setPlayPhase("stages");
+    setGreeting(HOW_TO_PLAY_GREETING);
+  }, []);
 
   const handleStageFinished = useCallback(
     (result: StageResult) => {
@@ -129,7 +133,9 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
         return;
       }
       // No stop between stages — the scene keeps running and the next
-      // stage announces itself with a banner.
+      // stage announces itself with a banner. Leaving How to Play, Fumi
+      // first announces the real game (the next stage waits for her).
+      if (result.isPractice) setGreeting(REAL_GAME_GREETING);
       setStageIndex(next);
     },
     [ageBand, stageIndex, stages.length, runTransition]
@@ -142,18 +148,18 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
 
   let content: React.ReactNode = null;
   if (screen === "start") {
-    content = <StartScreen activity={activity} onPlay={() => runTransition(() => setScreen("howto"))} />;
-  } else if (screen === "howto") {
-    content = <HowToScreen activity={activity} narrationDone={narrationDone} onNarrationDone={() => setNarrationDone(true)} onStart={beginRun} />;
+    // Play goes straight into the in-game tutorial (no separate how-to page).
+    content = <StartScreen activity={activity} onPlay={beginRun} />;
   } else if (screen === "playing" && stage) {
     content = (
       <>
         <LivingScene activity={activity} />
-        <FumiRaft cheerKey={cheerKey} />
+        {greeting && <FumiGuide key={greeting} speech={greeting} onDone={handleGreetingDone} />}
         {playPhase === "tutorial" ? (
-          <TutorialRunner key={`tut-${attempt}`} paused={paused} onActivation={handleTutorialActivation} onDone={handleTutorialDone} />
+          <TutorialRunner key={`tut-${attempt}`} paused={paused} greeting={greeting !== null} onActivation={handleTutorialActivation} onDone={handleTutorialDone} />
         ) : (
-          <StageRunner key={`${attempt}-${stage.stageIndex}`} stage={stage} paused={paused} onActivation={handleActivation} onFinished={handleStageFinished} />
+          // The How to Play round starts only after Fumi's line has finished.
+          greeting === null && <StageRunner key={`${attempt}-${stage.stageIndex}`} stage={stage} paused={paused} onActivation={handleActivation} onFinished={handleStageFinished} />
         )}
         <SignalHud
           label={playPhase === "tutorial" ? "Tutorial" : stage.label}
@@ -192,7 +198,7 @@ function TitleSign({ width }: { width: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Start + how-to
+// Start screen
 // ---------------------------------------------------------------------------
 
 function StartScreen({ activity, onPlay }: { activity: "normal" | "high"; onPlay: () => void }) {
@@ -212,33 +218,6 @@ function StartScreen({ activity, onPlay }: { activity: "normal" | "high"; onPlay
   );
 }
 
-function HowToScreen({ activity, narrationDone, onNarrationDone, onStart }: { activity: "normal" | "high"; narrationDone: boolean; onNarrationDone: () => void; onStart: () => void }) {
-  return (
-    <>
-      <LivingScene activity={activity} dim={0.66} />
-      <div style={{ position: "absolute", top: SAFE_AREA_TOP + 6, left: 16, right: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={ASSETS.fumi} alt="Fumi" style={{ width: 72, height: "auto", flexShrink: 0, animation: "float-y 3.2s ease-in-out infinite" }} />
-          <div style={{ ...speechBubbleStyle, flex: 1 }}>
-            <Typewriter text={NARRATION_TEXT} onDone={onNarrationDone} speedMultiplier={0.6} />
-          </div>
-        </div>
-        <div style={{ ...captionStyle, fontSize: 12, fontWeight: 600, textAlign: "left" }}>{CHILD_RULE_TEXT}</div>
-        <SignalTypesGuide />
-      </div>
-      <button
-        type="button"
-        className="tap-scale"
-        onClick={onStart}
-        disabled={!narrationDone}
-        style={{ ...playButtonStyle, position: "absolute", bottom: 30, left: 50, right: 50, fontSize: 22, opacity: narrationDone ? 1 : 0.45, cursor: narrationDone ? "pointer" : "default" }}
-      >
-        Let&apos;s Go
-      </button>
-    </>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Shared playing-field pieces
@@ -303,7 +282,12 @@ function FeedbackLayer({ feedbacks }: { feedbacks: Feedback[] }) {
       </svg>
       {feedbacks.map((f) =>
         f.kind === "mist" ? (
-          <MistPuff key={f.id} tower={TOWERS[f.tower]} />
+          <div key={f.id}>
+            <MistPuff tower={TOWERS[f.tower]} />
+            <div aria-hidden style={{ position: "absolute", left: TOWERS[f.tower].gem.x - 17, top: TOWERS[f.tower].gem.y - 100, pointerEvents: "none", zIndex: 12, animation: "float-up-fade 1000ms ease-out both" }}>
+              <div style={wrongBadgeStyle}>✕</div>
+            </div>
+          </div>
         ) : (
           <div key={f.id} aria-hidden style={{ position: "absolute", left: TOWERS[f.tower].gem.x - 17, top: TOWERS[f.tower].gem.y - 100, pointerEvents: "none", zIndex: 12, animation: "float-up-fade 1000ms ease-out both" }}>
             <div style={hitBadgeStyle}>✓</div>
@@ -337,7 +321,7 @@ function EffectsLayer({ children }: { children: React.ReactNode }) {
 // Tutorial — Fumi labels a ripple, a single flash and the real signal
 // ---------------------------------------------------------------------------
 
-function TutorialRunner({ paused, onActivation, onDone }: { paused: boolean; onActivation: () => void; onDone: () => void }) {
+function TutorialRunner({ paused, greeting, onActivation, onDone }: { paused: boolean; greeting: boolean; onActivation: () => void; onDone: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [showing, setShowing] = useState(false); // false = short quiet gap before each step
   const [finished, setFinished] = useState(false);
@@ -345,7 +329,8 @@ function TutorialRunner({ paused, onActivation, onDone }: { paused: boolean; onA
   const step = TUTORIAL_STEPS[stepIndex];
 
   useEffect(() => {
-    if (paused) return;
+    // Hold the first step until Fumi's greeting bubble has gone.
+    if (paused || greeting) return;
     let t: ReturnType<typeof setTimeout> | undefined;
     if (finished) t = setTimeout(onDone, 1800);
     else if (!showing) t = setTimeout(() => setShowing(true), stepIndex === 0 ? 900 : 600);
@@ -358,7 +343,7 @@ function TutorialRunner({ paused, onActivation, onDone }: { paused: boolean; onA
     return () => {
       if (t) clearTimeout(t);
     };
-  }, [paused, finished, showing, step, stepIndex, onDone]);
+  }, [paused, greeting, finished, showing, step, stepIndex, onDone]);
 
   const handleTap = (towerId: number) => {
     if (paused || finished || !showing || !step.waitForTap || towerId !== step.tower) return;
@@ -369,7 +354,8 @@ function TutorialRunner({ paused, onActivation, onDone }: { paused: boolean; onA
   };
 
   const tower = TOWERS[step.tower];
-  const caption = finished ? "Great catch! Now try 5 practice signals." : showing ? step.caption : "Watch the towers…";
+  // While Fumi's greeting bubble is up, keep the caption strip clear.
+  const caption = greeting ? null : finished ? "Great catch! That's the real signal." : showing ? step.caption : "Watch the towers…";
 
   return (
     <>
@@ -529,10 +515,11 @@ function StageRunner({ stage, paused, onActivation, onFinished }: StageRunnerPro
 
   let caption: string | null = null;
   if (stage.isPractice) {
-    if (missHint) caption = "That was the real signal — watch for three rings!";
-    else if (active.some((e) => e.type === "three-rings")) caption = "Three rings! Tap that tower!";
-    else if (active.length > 0) caption = "Not three rings — ignore it!";
-    else caption = "Watch all three towers…";
+    // How to Play captions: practice coaching.
+    if (missHint) caption = "Practice tip: that was three rings — tap it next time!";
+    else if (active.some((e) => e.type === "three-rings")) caption = "Practice: three rings! Tap that tower!";
+    else if (active.length > 0) caption = "Practice: not three rings — don't tap it.";
+    else caption = "Practice round — watch all three towers…";
   }
 
   return (
@@ -838,18 +825,6 @@ const bannerStyle: React.CSSProperties = {
   animation: `sw-banner ${BANNER_MS}ms ease-out both`,
 };
 
-const speechBubbleStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.96)",
-  color: "#1d2433",
-  borderRadius: 14,
-  padding: "9px 11px",
-  fontSize: 12,
-  fontWeight: 600,
-  lineHeight: 1.42,
-  minHeight: 102,
-  boxShadow: "0 8px 20px rgba(0,0,0,0.3)",
-};
-
 const tutorialLabelBase: React.CSSProperties = {
   borderRadius: 999,
   padding: "5px 12px",
@@ -877,6 +852,9 @@ const hitBadgeStyle: React.CSSProperties = {
   background: "#3fb34f",
   boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
 };
+
+// Wrong tap: the same badge in red with a cross.
+const wrongBadgeStyle: React.CSSProperties = { ...hitBadgeStyle, background: "#e84a4a" };
 
 const pauseScrimStyle: React.CSSProperties = {
   position: "absolute",

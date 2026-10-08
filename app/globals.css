@@ -443,24 +443,7 @@ button {
   100% { opacity: 0; transform: scale(1.8); }
 }
 
-@keyframes sw-fumi-hop {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(-18px) scale(1.06); }
-  60% { transform: translateY(0) scale(0.97, 1.03); }
-  100% { transform: translateY(0); }
-}
-
-@keyframes sw-raft-bob {
-  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
-  50% { transform: translateY(-4px) rotate(1.5deg); }
-}
-
-@keyframes sw-raft-ripple {
-  0% { opacity: 0.6; transform: scale(0.9); }
-  100% { opacity: 0; transform: scale(1.25); }
-}
-
-@keyframes sw-banner {
+ @keyframes sw-banner {
   0% { opacity: 0; transform: translateY(-8px); }
   12% { opacity: 1; transform: translateY(0); }
   80% { opacity: 1; }
@@ -515,6 +498,17 @@ button {
 @keyframes tc-flow-side {
   from { transform: translateX(0); }
   to { transform: translateX(var(--tc-tile-w)); }
+}
+
+
+@keyframes tc-cloud-drift {
+  from { transform: translateX(-220px); }
+  to { transform: translateX(420px); }
+}
+
+@keyframes tc-mist {
+  0%, 100% { opacity: 0.5; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.1); }
 }
 
 @keyframes tc-splash {

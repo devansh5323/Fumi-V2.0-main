@@ -14,6 +14,9 @@ function bucket(presented: number, identified: number): AccuracyBucket {
 }
 
 // Every metric is computed over SCORED rounds only — practice is excluded.
+// Identification time = time per correct selection after the balls stop;
+// response after a rule change = time from the rule appearing to the first
+// routed ball.
 export function computeMetrics(scored: RoundResult[], gameplayDurationMs: number): TwinCurrentMetrics {
   const totalTargetsPresented = scored.reduce((s, r) => s + r.targetCount, 0);
   const correctTargetsIdentified = scored.reduce((s, r) => s + r.correctTargets, 0);

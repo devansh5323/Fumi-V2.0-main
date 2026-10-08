@@ -1,21 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgeBand, CargoSymbol, GameOutcome, PickOutcome, PickRecord, Point, RoundPlan, RoundResult } from "./types";
+import type { AgeBand, CargoSymbol, GameOutcome, PickRecord, Point, RoundPlan, RoundResult } from "./types";
 import {
-  ASSETS,
-  CHILD_RULE_TEXT,
   DEFAULT_QUEST,
-  FUMI_SRC,
-  HUD_HEIGHT,
-  NARRATION_TEXT,
   PLAY_AREA,
-  QUEST_TEXT,
   REWARDS,
-  RULE_CARD_RECT,
-  SAFE_AREA_TOP,
   SPARK_RADIUS,
   START_ENERGY,
+  SYMBOL_NAME,
   TIMING,
   WRONG_ROUTE_ENERGY_COST,
   gateRects,
@@ -25,23 +18,23 @@ import { sampleTrack } from "./engine/motion";
 import { gateFor } from "./engine/rules";
 import { computeGameOutcome } from "./engine/metrics";
 import { RiverBackdrop } from "./components/RiverBackdrop";
-import { EnergySpark, GLOW_COLOR, type SparkVisualState } from "./components/EnergySpark";
+import { EnergySpark, type SparkLook } from "./components/EnergySpark";
 import { RiverGate, type GateState } from "./components/RiverGate";
 import { RuleCard } from "./components/RuleCard";
-import { TwinHud } from "./components/TwinHud";
-import { Typewriter } from "../../components/Typewriter";
+import { StepHeader } from "./components/StepHeader";
 import { Fumi } from "../../components/Fumi";
 import { completesDay } from "../../lib/dayProgress";
 import { reportGame } from "./lib/sessionReporter";
 
 // intro (quest + narration) -> playing (4 practice + 16 scored rounds,
 // back-to-back) -> complete (stats, rewards, accessory pick).
-type GameScreen = "intro" | "playing" | "complete";
+type GameScreen = "playing" | "complete";
 
-// One round: targets glow -> glow fades -> everything moves -> gates rise
-// and the child routes sparks -> true targets briefly revealed -> gates
-// swing open and the stream surges into the next round.
-type RoundPhase = "reveal" | "fade" | "motion" | "respond" | "result" | "flow";
+// One round (the mockup's steps): 1 targets glow -> 2 everything flows ->
+// 3 the child selects the balls they tracked -> 4 symbols revealed ->
+// 5 rule card -> 6 drag each ball through its gate -> missed targets
+// briefly re-light -> the stream surges into the next round.
+type RoundPhase = "preview" | "fade" | "motion" | "select" | "reveal" | "rule" | "route" | "result" | "flow";
 
 function generateSeed(): string {
   return `tc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -58,13 +51,13 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
   const [attempt, setAttempt] = useState(0);
   const rounds = useMemo(() => buildSession(ageBand, `${sessionSeed}-a${attempt}`), [ageBand, sessionSeed, attempt]);
 
-  const [screen, setScreen] = useState<GameScreen>("intro");
-  const [narrationDone, setNarrationDone] = useState(false);
+  // No intro screen — the game opens straight into the practice rounds.
+  const [screen, setScreen] = useState<GameScreen>("playing");
   const [roundIndex, setRoundIndex] = useState(0);
   const [scoredDone, setScoredDone] = useState(0);
-  const [energy, setEnergy] = useState(START_ENERGY);
+  const [practiceDone, setPracticeDone] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [roundPhase, setRoundPhase] = useState<RoundPhase>("reveal");
+  const [roundPhase, setRoundPhase] = useState<RoundPhase>("preview");
   const [outcome, setOutcome] = useState<GameOutcome | null>(null);
   const [veil, setVeil] = useState<{ opacity: number; message: string | null }>({ opacity: 0, message: null });
 
@@ -75,6 +68,10 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
   const energyRef = useRef(START_ENERGY);
 
   const round = rounds[roundIndex];
+
+  useEffect(() => {
+    startedAtRef.current = Date.now();
+  }, []);
 
   // Dip to dark, swap content while covered, optionally hold a short label.
   const runTransition = useCallback((action: () => void, message: string | null = null) => {
@@ -90,10 +87,10 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
     resultsRef.current = [];
     pausedTotalRef.current = 0;
     energyRef.current = START_ENERGY;
-    setEnergy(START_ENERGY);
     setScoredDone(0);
+    setPracticeDone(0);
     setRoundIndex(0);
-    setRoundPhase("reveal");
+    setRoundPhase("preview");
     setPaused(false);
     runTransition(() => {
       startedAtRef.current = Date.now();
@@ -116,13 +113,13 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
 
   const handleEnergyCost = useCallback((cost: number) => {
     energyRef.current = Math.max(0, energyRef.current - cost);
-    setEnergy(energyRef.current);
   }, []);
 
   const handleRoundFinished = useCallback(
     (result: RoundResult) => {
       resultsRef.current = [...resultsRef.current, result];
-      if (!result.isPractice) setScoredDone((n) => n + 1);
+      if (result.isPractice) setPracticeDone((n) => n + 1);
+      else setScoredDone((n) => n + 1);
 
       const next = roundIndex + 1;
       if (next >= rounds.length) {
@@ -135,11 +132,11 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
       const leavingPractice = rounds[roundIndex].isPractice && !rounds[next].isPractice;
       if (leavingPractice) {
         runTransition(() => {
-          setRoundPhase("reveal");
+          setRoundPhase("preview");
           setRoundIndex(next);
-        }, "Practice done — now it counts!");
+        }, "How to Play done — now it counts!");
       } else {
-        setRoundPhase("reveal");
+        setRoundPhase("preview");
         setRoundIndex(next);
       }
     },
@@ -152,9 +149,7 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
   }, [onExit]);
 
   let content: React.ReactNode = null;
-  if (screen === "intro") {
-    content = <Intro narrationDone={narrationDone} onNarrationDone={() => setNarrationDone(true)} onStart={startRun} />;
-  } else if (screen === "playing" && round) {
+  if (screen === "playing" && round) {
     content = (
       <>
         <RiverBackdrop surge={roundPhase === "flow"} />
@@ -162,17 +157,12 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
           key={`${attempt}-${round.roundIndex}`}
           round={round}
           paused={paused}
+          scoredRoundsDone={scoredDone}
+          practiceRoundsDone={practiceDone}
+          onTogglePause={togglePause}
           onPhaseChange={setRoundPhase}
           onEnergyCost={handleEnergyCost}
           onFinished={handleRoundFinished}
-        />
-        <TwinHud
-          label={round.label}
-          isPractice={round.isPractice}
-          scoredRoundsDone={scoredDone}
-          energy={energy}
-          paused={paused}
-          onTogglePause={togglePause}
         />
         {paused && <PauseOverlay onResume={togglePause} onExit={handleExit} />}
       </>
@@ -196,111 +186,114 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
 }
 
 // ---------------------------------------------------------------------------
-// Intro
-// ---------------------------------------------------------------------------
-
-function Intro({ narrationDone, onNarrationDone, onStart }: { narrationDone: boolean; onNarrationDone: () => void; onStart: () => void }) {
-  return (
-    <>
-      <RiverBackdrop />
-      <div aria-hidden style={introVignetteStyle} />
-
-      <div style={titleWrapStyle}>
-        <div style={titlePlankStyle}>Twin Current</div>
-        <div style={questCardStyle}>
-          <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "#8a5a1c", marginBottom: 4 }}>DAY 2 · GREENWOOD RIVER RELAY</div>
-          {QUEST_TEXT}
-        </div>
-      </div>
-
-      <div style={narrationGroupStyle}>
-        <div style={narrationBubbleStyle}>
-          <Typewriter text={NARRATION_TEXT} onDone={onNarrationDone} speedMultiplier={0.7} />
-          <div style={narrationTailStyle} />
-        </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={FUMI_SRC} alt="Fumi" style={{ width: 130, height: "auto", filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.45))", animation: "float-y 3.2s ease-in-out infinite" }} />
-      </div>
-
-      <button
-        type="button"
-        className="tap-scale"
-        onClick={onStart}
-        disabled={!narrationDone}
-        style={{ ...pinnedButtonStyle, opacity: narrationDone ? 1 : 0, pointerEvents: narrationDone ? "auto" : "none" }}
-      >
-        Start Watching →
-      </button>
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// One round
+// One round — the mockup's six steps
 // ---------------------------------------------------------------------------
 
 type RoundRunnerProps = {
   round: RoundPlan;
   paused: boolean;
+  scoredRoundsDone: number;
+  practiceRoundsDone: number;
+  onTogglePause: () => void;
   onPhaseChange: (phase: RoundPhase) => void;
   onEnergyCost: (cost: number) => void;
   onFinished: (result: RoundResult) => void;
 };
 
 type Drag = { sparkId: string; x: number; y: number; offsetX: number; offsetY: number; startX: number; startY: number; moved: boolean };
-type Toast = { text: string; tone: "positive" | "negative" | "info"; key: number };
+type Routed = { gate: CargoSymbol; ok: boolean };
 
 const DRAG_THRESHOLD = 6;
-const GATE_HIT_PAD = 14;
+const GATE_HIT_PAD = 22;
 
-function practiceHint(round: RoundPlan, phase: RoundPhase): string | null {
-  if (!round.isPractice) return null;
-  if (round.roundIndex === 0 && phase === "respond") return "Drag each of our sparks to the gate the card shows.";
-  if (round.ruleChanged && phase === "respond") return "The rule changed! Now each spark goes to the OTHER gate.";
-  return null;
+// Fixed-length phases (ms). Motion has its own clock.
+function phaseDuration(phase: RoundPhase): number | null {
+  switch (phase) {
+    case "preview":
+      return TIMING.previewMs;
+    case "fade":
+      return TIMING.fadeMs;
+    case "reveal":
+      return TIMING.revealMs;
+    case "rule":
+      return TIMING.ruleMs;
+    case "result":
+      return TIMING.resultMs;
+    case "flow":
+      return TIMING.flowMs;
+    default:
+      return null;
+  }
+}
+
+const NEXT_PHASE: Partial<Record<RoundPhase, RoundPhase>> = { preview: "fade", fade: "motion", reveal: "rule", rule: "route", result: "flow" };
+
+function positionName(index: number, count: number): string {
+  if (index === 0) return "Left";
+  if (index === count - 1) return "Right";
+  return "Middle";
 }
 
 // Keyed per round by the parent, so every bit of per-round state resets by
 // remounting rather than by an effect watching the round id.
-function RoundRunner({ round, paused, onPhaseChange, onEnergyCost, onFinished }: RoundRunnerProps) {
+function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTogglePause, onPhaseChange, onEnergyCost, onFinished }: RoundRunnerProps) {
   const track = round.motion;
+  const n = round.targetCount;
   const gates = useMemo(() => gateRects(round.gateOrder.length), [round.gateOrder.length]);
 
-  const [phase, setPhaseState] = useState<RoundPhase>("reveal");
+  const [phase, setPhaseState] = useState<RoundPhase>("preview");
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(Math.ceil(TIMING.previewMs / 1000));
   const [restPositions, setRestPositions] = useState<Point[]>(() => track.frames[0]);
-  const [sparkStates, setSparkStates] = useState<Record<string, SparkVisualState>>({});
+  const [selected, setSelected] = useState<string[]>([]);
+  const [routed, setRouted] = useState<Record<string, Routed>>({});
   const [overrides, setOverrides] = useState<Record<string, Point>>({});
   const [gateStates, setGateStates] = useState<Partial<Record<CargoSymbol, GateState>>>({});
-  const [splashes, setSplashes] = useState<{ id: number; gate: CargoSymbol }[]>([]);
+  const [armed, setArmed] = useState<string | null>(null); // tap-a-ball-then-tap-a-gate
   const [drag, setDrag] = useState<Drag | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [pickCount, setPickCount] = useState(0);
-  const [foundCount, setFoundCount] = useState(0);
-  const [toast, setToast] = useState<Toast | null>(null);
+  // The selection window has run out: the balls have stopped, and the game
+  // waits for the child to finish choosing (it never moves on by itself).
+  const [flowEnded, setFlowEnded] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sparkEls = useRef<(HTMLDivElement | null)[]>([]);
+  const tailEls = useRef<(HTMLDivElement | null)[]>([]);
+  const phaseElapsedRef = useRef(0);
   const motionElapsedRef = useRef(0);
-  const respondStartRef = useRef(0);
-  const lastPickAtRef = useRef(0);
+  const livePtsRef = useRef<Point[]>(track.frames[0]); // latest flowing positions
+  const frozenRef = useRef<Set<string>>(new Set()); // selected balls stop flowing
+  const overridesRef = useRef<Record<string, Point>>({});
+  const selectionClosedRef = useRef(false);
+  const endSelectionRef = useRef<() => void>(() => {});
+  const selectStartRef = useRef(0);
+  const lastSelectAtRef = useRef(0);
+  const ruleStartRef = useRef(0);
   const picksRef = useRef<PickRecord[]>([]);
 
   const setPhase = useCallback(
     (p: RoundPhase) => {
+      phaseElapsedRef.current = 0;
       setPhaseState(p);
       onPhaseChange(p);
+      const d = phaseDuration(p);
+      setSecondsLeft(p === "preview" && d ? Math.ceil(d / 1000) : p === "motion" ? Math.ceil(round.motionMs / 1000) : p === "select" ? Math.ceil(round.selectMs / 1000) : null);
+      if (p === "select") {
+        selectStartRef.current = performance.now();
+        lastSelectAtRef.current = selectStartRef.current;
+      }
+      if (p === "rule") ruleStartRef.current = performance.now();
     },
-    [onPhaseChange]
+    [onPhaseChange, round.motionMs, round.selectMs]
   );
 
   const buildResult = useCallback((): RoundResult => {
     const picks = picksRef.current;
     const correctTargets = picks.filter((p) => p.isTarget).length;
+    const firstRoute = picks.map((p) => p.routedAtMs).filter((v): v is number => v !== null);
     return {
       roundIndex: round.roundIndex,
       isPractice: round.isPractice,
       sparkCount: round.sparks.length,
-      targetCount: round.targetCount,
+      targetCount: n,
       speedPxPerSec: round.speedPxPerSec,
       speedTier: round.speedTier,
       rule: round.rule,
@@ -308,127 +301,191 @@ function RoundRunner({ round, paused, onPhaseChange, onEnergyCost, onFinished }:
       picks,
       correctTargets,
       wrongSparks: picks.filter((p) => p.outcome === "wrong-spark").length,
-      missedTargets: round.targetCount - correctTargets,
+      missedTargets: n - correctTargets,
       correctRoutes: picks.filter((p) => p.outcome === "correct-route").length,
       wrongRoutes: picks.filter((p) => p.outcome === "wrong-route").length,
-      firstResponseMs: picks.length > 0 ? picks[0].atMs : null,
+      firstResponseMs: firstRoute.length ? Math.min(...firstRoute) : null,
     };
-  }, [round]);
+  }, [round, n]);
 
-  // Fixed-duration phases. Paused: hold (the phase re-arms from its start on
-  // resume). Motion has its own pausable clock below.
+  // Fixed-length phases tick on a pausable 100ms clock (pausing simply stops
+  // the clock), which also drives the timer chip during the preview.
   useEffect(() => {
-    if (paused) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    if (phase === "reveal") timer = setTimeout(() => setPhase("fade"), TIMING.revealMs);
-    else if (phase === "fade") timer = setTimeout(() => setPhase("motion"), TIMING.fadeMs);
-    else if (phase === "result") timer = setTimeout(() => setPhase("flow"), TIMING.resultMs);
-    else if (phase === "flow") timer = setTimeout(() => onFinished(buildResult()), TIMING.flowMs);
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
+    const d = phaseDuration(phase);
+    if (paused || d === null) return;
+    let last = performance.now();
+    const id = setInterval(() => {
+      const now = performance.now();
+      phaseElapsedRef.current += now - last;
+      last = now;
+      if (phase === "preview") setSecondsLeft(Math.max(1, Math.ceil((d - phaseElapsedRef.current) / 1000)));
+      if (phaseElapsedRef.current >= d) {
+        clearInterval(id);
+        if (phase === "flow") onFinished(buildResult());
+        // No correct ball found: nothing to route, skip the rule and gates.
+        else if (phase === "reveal" && !picksRef.current.some((pk) => pk.isTarget)) setPhase("result");
+        else setPhase(NEXT_PHASE[phase]!);
+      }
+    }, 100);
+    return () => clearInterval(id);
   }, [phase, paused, setPhase, onFinished, buildResult]);
 
-  // Motion playback: writes transforms straight to the spark elements each
-  // frame (no React render per frame). Elapsed time only accumulates while
-  // unpaused, so pausing freezes the sparks mid-stream.
+  // Motion playback (steps 2 and 3): writes transforms (and each ball's
+  // trail) straight to the elements every frame — no React render per frame.
+  // The balls keep flowing through the selection window; a selected ball
+  // stops where it was tapped. Elapsed time only accumulates while unpaused.
   useEffect(() => {
-    if (phase !== "motion" || paused) return;
+    if ((phase !== "motion" && phase !== "select") || paused || flowEnded) return;
     let raf = 0;
     let last = performance.now();
+    let prev = sampleTrack(track, motionElapsedRef.current);
+    let lastChip = -1;
+    const total = round.motionMs + round.selectMs;
     const tick = (now: number) => {
+      const dt = Math.max(1, now - last);
       motionElapsedRef.current += now - last;
       last = now;
       const pts = sampleTrack(track, motionElapsedRef.current);
+      livePtsRef.current = pts;
       pts.forEach((p, i) => {
+        if (frozenRef.current.has(round.sparks[i].sparkId)) return;
         const el = sparkEls.current[i];
         if (el) el.style.transform = `translate(${p.x - SPARK_RADIUS}px, ${p.y - SPARK_RADIUS}px)`;
+        const tail = tailEls.current[i];
+        if (tail) {
+          const vx = (p.x - prev[i].x) / dt;
+          const vy = (p.y - prev[i].y) / dt;
+          const sp = Math.hypot(vx, vy) * 1000; // px/s
+          tail.style.width = `${Math.min(46, sp * 0.32)}px`;
+          tail.style.opacity = sp > 8 ? "0.8" : "0";
+          tail.style.transform = `rotate(${Math.atan2(-vy, -vx)}rad)`;
+        }
       });
-      if (motionElapsedRef.current >= round.motionMs) {
+      prev = pts;
+      const inSelect = motionElapsedRef.current >= round.motionMs;
+      if (phase === "motion" && inSelect) {
+        setPhase("select");
+        return; // the effect restarts for the select phase
+      }
+      const left = inSelect ? total - motionElapsedRef.current : round.motionMs - motionElapsedRef.current;
+      const chip = Math.max(1, Math.ceil(left / 1000));
+      if (chip !== lastChip) {
+        lastChip = chip;
+        setSecondsLeft(chip);
+      }
+      if (motionElapsedRef.current >= total) {
+        tailEls.current.forEach((t) => t && (t.style.opacity = "0"));
         setRestPositions(track.frames[track.frames.length - 1]);
-        respondStartRef.current = performance.now();
-        lastPickAtRef.current = respondStartRef.current;
-        setPhase("respond");
+        setFlowEnded(true);
+        setSecondsLeft(null);
         return;
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [phase, paused, track, round.motionMs, setPhase]);
+  }, [phase, paused, flowEnded, track, round.motionMs, round.selectMs, round.sparks, setPhase]);
 
-  // Paused time while the gates are up doesn't count toward response times.
+  // Paused time doesn't count toward selection / routing response times.
   useEffect(() => {
-    if (!paused || phase !== "respond") return;
+    if (!paused || (phase !== "select" && phase !== "route")) return;
     const pausedAt = performance.now();
     return () => {
       const d = performance.now() - pausedAt;
-      respondStartRef.current += d;
-      lastPickAtRef.current += d;
+      selectStartRef.current += d;
+      lastSelectAtRef.current += d;
+      ruleStartRef.current += d;
     };
   }, [paused, phase]);
 
-  const showToast = useCallback((text: string, tone: Toast["tone"]) => {
-    setToast({ text, tone, key: Date.now() });
-  }, []);
+  // Step 3: choose the balls you were following. Taps can be undone until
+  // the last one is chosen; then the choice locks and symbols are revealed.
+  // Selection closes when the last ball is chosen or the window runs out
+  // (untapped targets then count as missed).
+  const endSelection = useCallback(() => {
+    if (selectionClosedRef.current) return;
+    selectionClosedRef.current = true;
+    const pts = livePtsRef.current;
+    setRestPositions((prevRest) => round.sparks.map((s, i) => overridesRef.current[s.sparkId] ?? pts[i] ?? prevRest[i]));
+    setPhase(picksRef.current.length > 0 ? "reveal" : "result");
+  }, [round.sparks, setPhase]);
+  useEffect(() => {
+    endSelectionRef.current = endSelection;
+  }, [endSelection]);
 
-  const resolvePick = useCallback(
+  const toggleSelect = useCallback((sparkId: string) => {
+    if (phase !== "select" || paused || selectionClosedRef.current) return;
+    if (selected.includes(sparkId)) {
+      picksRef.current = picksRef.current.filter((p) => p.sparkId !== sparkId);
+      frozenRef.current.delete(sparkId);
+      delete overridesRef.current[sparkId];
+      setOverrides((o) => {
+        const next = { ...o };
+        delete next[sparkId];
+        return next;
+      });
+      setSelected((s) => s.filter((id) => id !== sparkId));
+      return;
+    }
+    const spark = round.sparks.find((s) => s.sparkId === sparkId);
+    if (!spark) return;
+    const now = performance.now();
+    picksRef.current = [
+      ...picksRef.current,
+      {
+        sparkId,
+        isTarget: spark.isTarget,
+        cargo: spark.cargo,
+        gate: null,
+        outcome: spark.isTarget ? "wrong-route" : "wrong-spark", // routing fills this in
+        atMs: Math.round(now - selectStartRef.current),
+        sincePrevMs: Math.round(now - lastSelectAtRef.current),
+        routedAtMs: null,
+      },
+    ];
+    lastSelectAtRef.current = now;
+    // Stop this ball where it was tapped.
+    const idx = round.sparks.findIndex((s) => s.sparkId === sparkId);
+    const at = livePtsRef.current[idx];
+    frozenRef.current.add(sparkId);
+    overridesRef.current[sparkId] = at;
+    setOverrides((o) => ({ ...o, [sparkId]: at }));
+    const tail = tailEls.current[idx];
+    if (tail) tail.style.opacity = "0";
+    const next = [...selected, sparkId];
+    setSelected(next);
+    if (next.length >= n) setTimeout(() => endSelectionRef.current(), 350);
+  }, [phase, paused, selected, round.sparks, n]);
+
+  // Step 6: a selected ball reaches a gate.
+  const routeTo = useCallback(
     (sparkId: string, gate: CargoSymbol) => {
-      if (picksRef.current.length >= round.targetCount) return;
+      if (routed[sparkId]) return;
       const spark = round.sparks.find((s) => s.sparkId === sparkId);
       if (!spark) return;
-
+      const ok = gateFor(spark.cargo, round.rule, round.categories) === gate;
       const now = performance.now();
-      let outcome: PickOutcome;
-      if (!spark.isTarget || !spark.cargo) outcome = "wrong-spark";
-      else outcome = gateFor(spark.cargo, round.rule, round.categories) === gate ? "correct-route" : "wrong-route";
-
-      picksRef.current = [
-        ...picksRef.current,
-        {
-          sparkId,
-          isTarget: spark.isTarget,
-          cargo: spark.cargo,
-          gate,
-          outcome,
-          atMs: Math.round(now - respondStartRef.current),
-          sincePrevMs: Math.round(now - lastPickAtRef.current),
-        },
-      ];
-      lastPickAtRef.current = now;
-      setPickCount(picksRef.current.length);
-      if (spark.isTarget) setFoundCount((n) => n + 1);
-      setSelected(null);
-
-      const rect = gates[round.gateOrder.indexOf(gate)];
-      setOverrides((o) => ({ ...o, [sparkId]: { x: rect.x + rect.width / 2, y: rect.y + rect.height * 0.62 } }));
-      const splashId = Date.now();
-      setSplashes((s) => [...s, { id: splashId, gate }]);
-      setTimeout(() => setSplashes((s) => s.filter((x) => x.id !== splashId)), 750);
-      setSparkStates((s) => ({ ...s, [sparkId]: outcome === "wrong-spark" ? "fizzled" : "absorbed" }));
-
-      if (outcome === "correct-route") {
-        setGateStates((g) => ({ ...g, [gate]: "open" }));
-        showToast("Gate open! That's our spark.", "positive");
-      } else {
-        setGateStates((g) => (g[gate] === "open" ? g : { ...g, [gate]: "reject" }));
-        setTimeout(() => setGateStates((g) => (g[gate] === "reject" ? { ...g, [gate]: "closed" } : g)), 600);
-        if (outcome === "wrong-route") {
-          if (!round.isPractice) onEnergyCost(WRONG_ROUTE_ENERGY_COST);
-          showToast("Our spark — but wrong gate. Check the rule card.", "negative");
-        } else {
-          showToast("That one wasn't ours.", "negative");
-        }
-      }
-
-      if (picksRef.current.length >= round.targetCount) {
-        setTimeout(() => setPhase("result"), 650);
-      }
+      picksRef.current = picksRef.current.map((p) =>
+        p.sparkId === sparkId
+          ? { ...p, gate, routedAtMs: Math.round(now - ruleStartRef.current), outcome: !p.isTarget ? "wrong-spark" : ok ? "correct-route" : "wrong-route" }
+          : p
+      );
+      const g = gates[round.gateOrder.indexOf(gate)];
+      overridesRef.current[sparkId] = { x: g.x + g.width / 2, y: g.y + g.height * 0.62 };
+      setOverrides((o) => ({ ...o, [sparkId]: { x: g.x + g.width / 2, y: g.y + g.height * 0.62 } }));
+      setRouted((r) => {
+        const next = { ...r, [sparkId]: { gate, ok } };
+        const toRoute = picksRef.current.filter((pk) => pk.isTarget).length;
+        if (Object.keys(next).length >= toRoute) setTimeout(() => setPhase("result"), 700);
+        return next;
+      });
+      setArmed(null);
+      setGateStates((s) => ({ ...s, [gate]: ok ? "open" : "reject" }));
+      setTimeout(() => setGateStates((s) => ({ ...s, [gate]: "closed" })), 650);
+      if (spark.isTarget && !ok && !round.isPractice) onEnergyCost(WRONG_ROUTE_ENERGY_COST);
     },
-    [round, gates, onEnergyCost, setPhase, showToast]
+    [routed, round, gates, setPhase, onEnergyCost]
   );
-
-  const canPick = phase === "respond" && !paused && pickCount < round.targetCount;
 
   const toLocal = (e: React.PointerEvent): Point => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -438,16 +495,36 @@ function RoundRunner({ round, paused, onPhaseChange, onEnergyCost, onFinished }:
   };
 
   const gateAt = (p: Point): CargoSymbol | null => {
-    const i = gates.findIndex(
-      (r) => p.x >= r.x - GATE_HIT_PAD && p.x <= r.x + r.width + GATE_HIT_PAD && p.y >= r.y - GATE_HIT_PAD && p.y <= r.y + r.height + GATE_HIT_PAD
-    );
+    const i = gates.findIndex((r) => p.x >= r.x - GATE_HIT_PAD && p.x <= r.x + r.width + GATE_HIT_PAD && p.y >= r.y - GATE_HIT_PAD && p.y <= r.y + r.height + GATE_HIT_PAD);
     return i === -1 ? null : round.gateOrder[i];
   };
 
   const sparkPos = (sparkId: string, i: number): Point => overrides[sparkId] ?? restPositions[i];
+  const isTargetId = (sparkId: string) => round.sparks.some((s) => s.sparkId === sparkId && s.isTarget);
+  // Only correctly found balls go to the gates; a wrong ball has already faded out.
+  const canRoute = (sparkId: string) => phase === "route" && !paused && selected.includes(sparkId) && isTargetId(sparkId) && !routed[sparkId];
+
+  // Step 3: a tap selects whichever flowing ball is NEAREST the finger (not
+  // whichever happens to be drawn on top), within a forgiving radius.
+  const SELECT_RADIUS = SPARK_RADIUS + 16;
+  const handleFieldTap = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (phase !== "select" || paused) return;
+    const p = toLocal(e);
+    let best = -1;
+    let bestD = SELECT_RADIUS;
+    round.sparks.forEach((s, i) => {
+      const at = overridesRef.current[s.sparkId] ?? livePtsRef.current[i];
+      const d = Math.hypot(at.x - p.x, at.y - p.y);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    if (best >= 0 && (selected.includes(round.sparks[best].sparkId) || selected.length < n)) toggleSelect(round.sparks[best].sparkId);
+  };
 
   const handlePointerDown = (sparkId: string, i: number) => (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!canPick || sparkStates[sparkId]) return;
+    if (!canRoute(sparkId)) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = toLocal(e);
     const rest = sparkPos(sparkId, i);
@@ -455,7 +532,7 @@ function RoundRunner({ round, paused, onPhaseChange, onEnergyCost, onFinished }:
   };
 
   const handlePointerMove = (sparkId: string) => (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag || drag.sparkId !== sparkId) return;
+    if (!drag || drag.sparkId !== sparkId || phase !== "route") return;
     const p = toLocal(e);
     const moved = drag.moved || Math.hypot(p.x - drag.startX, p.y - drag.startY) > DRAG_THRESHOLD;
     setDrag({ ...drag, x: p.x, y: p.y, moved });
@@ -463,193 +540,164 @@ function RoundRunner({ round, paused, onPhaseChange, onEnergyCost, onFinished }:
 
   const handlePointerUp = (sparkId: string) => (e: React.PointerEvent<HTMLDivElement>) => {
     if (!drag || drag.sparkId !== sparkId) return;
-    const p = toLocal(e);
     setDrag(null);
+    const p = toLocal(e);
     const gate = drag.moved ? (gateAt({ x: p.x + drag.offsetX, y: p.y + drag.offsetY }) ?? gateAt(p)) : null;
-    if (gate) resolvePick(sparkId, gate);
-    else if (!drag.moved) setSelected((s) => (s === sparkId ? null : sparkId)); // tap-to-select, then tap a gate
+    if (gate) routeTo(sparkId, gate);
+    else if (!drag.moved) setArmed((a) => (a === sparkId ? null : sparkId));
   };
-
-  const handlePointerCancel = () => setDrag(null);
 
   const draggedOverGate = drag?.moved ? (gateAt({ x: drag.x + drag.offsetX, y: drag.y + drag.offsetY }) ?? gateAt(drag)) : null;
 
-  const glowVisible = phase === "reveal";
-  const gatesVisible = phase === "respond" || phase === "result" || phase === "flow";
-  const pickedIds = new Set(Object.keys(sparkStates));
-  const fumiVisible = phase === "reveal" || gatesVisible;
+  const found = selected.filter((id) => round.sparks.find((s) => s.sparkId === id)?.isTarget).length;
+  // The gates stand across the channel heads for the whole round.
+  const gatesVisible = true;
+  const ruleVisible = phase === "rule" || phase === "route" || phase === "result";
 
-  const hint = practiceHint(round, phase);
-  let strip: { text: string; tone: Toast["tone"] } | null = null;
-  if (phase === "reveal") strip = { text: round.roundIndex === 0 ? "These glowing sparks are ours. Watch them!" : "Watch our glowing sparks!", tone: "info" };
-  else if (phase === "respond" && toast) strip = toast;
-  else if (phase === "respond") strip = { text: hint ?? (round.ruleChanged ? "New rule! Read the card." : `Send our ${round.targetCount} sparks home.`), tone: "info" };
-  else if (phase === "result") {
-    strip = {
-      text: foundCount === round.targetCount ? `All ${round.targetCount} of our sparks found!` : `Found ${foundCount} of ${round.targetCount}. The glowing ones were ours.`,
-      tone: foundCount === round.targetCount ? "positive" : "info",
-    };
+  // The step card (mockup steps 1–6).
+  let step = 1;
+  let title = `Look at the ${n} glowing balls`;
+  let subtitle = "Remember the ones that light up.";
+  if (phase === "fade" || phase === "motion") {
+    step = 2;
+    title = "Watch the balls move";
+    subtitle = `Keep an eye on the ${n} you saw.`;
+  } else if (phase === "select") {
+    step = 3;
+    title = `Select the ${n} balls`;
+    subtitle = flowEnded
+      ? `The balls stopped — tap the ${n} you were following.`
+      : `Tap the ${n} you were following — quick, they're still moving!`;
+  } else if (phase === "reveal") {
+    step = 4;
+    title = "Symbols are revealed";
+    const wrong = selected.length - found;
+    subtitle =
+      wrong === 0
+        ? "Each selected ball shows a symbol."
+        : found === 0
+          ? `Not quite — the glowing ${n === 1 ? "ball was" : "balls were"} ours.`
+          : `${wrong === 1 ? "One ball wasn't" : `${wrong} balls weren't`} ours — the glowing one was.`;
+  } else if (phase === "rule") {
+    step = 5;
+    title = "Follow the rule";
+    subtitle = round.ruleChanged ? "The rule changed — read it carefully!" : "A rule appears on the screen.";
+  } else if (phase === "route") {
+    step = 6;
+    title = "Send the balls through the correct gates";
+    subtitle = round.isPractice && round.roundIndex === 0 ? "Drag each glowing ball into the gate the rule shows." : "Guide each ball through the right gate.";
+  } else if (phase === "result" || phase === "flow") {
+    step = 6;
+    title = found === n ? `All ${n} balls found!` : `You found ${found} of ${n}`;
+    subtitle = found === n ? "Great tracking — the gates are open." : "The glowing ones were the balls to follow.";
   }
 
   return (
-    <div ref={containerRef} style={{ position: "absolute", inset: 0 }}>
-      {/* Sparks */}
-      <div style={{ position: "absolute", inset: 0, opacity: phase === "flow" ? 0 : 1, transition: `opacity ${TIMING.flowMs}ms ease` }}>
-        {round.sparks.map((spark, i) => {
-          const dragging = drag?.sparkId === spark.sparkId;
-          const pos = dragging ? { x: drag.x + drag.offsetX, y: drag.y + drag.offsetY } : sparkPos(spark.sparkId, i);
-          // After the last pick, any target the child didn't find re-lights
-          // briefly as feedback. Never during motion.
-          const revealMissed = phase === "result" && spark.isTarget && !pickedIds.has(spark.sparkId);
-          return (
-            <EnergySpark
-              key={spark.sparkId}
-              ref={(el) => {
-                sparkEls.current[i] = el;
-              }}
-              x={pos.x}
-              y={pos.y}
-              glow={spark.glow}
-              glowVisible={glowVisible || revealMissed}
-              cargo={spark.cargo}
-              cargoVisible={glowVisible || revealMissed}
-              visualState={selected === spark.sparkId ? "selected" : (sparkStates[spark.sparkId] ?? "idle")}
-              dragging={dragging}
-              interactive={canPick && !sparkStates[spark.sparkId]}
-              animateMoves={phase !== "motion"}
-              onPointerDown={handlePointerDown(spark.sparkId, i)}
-              onPointerMove={handlePointerMove(spark.sparkId)}
-              onPointerUp={handlePointerUp(spark.sparkId)}
-              onPointerCancel={handlePointerCancel}
-            />
-          );
-        })}
-
-        {/* Fumi's markers over each target during the reveal. */}
-        {phase === "reveal" &&
-          round.sparks.map((spark, i) =>
-            spark.glow ? (
-              <div
-                key={`mark-${spark.sparkId}`}
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  left: restPositions[i].x - 8,
-                  top: restPositions[i].y - 50,
-                  color: GLOW_COLOR[spark.glow],
-                  fontSize: 16,
-                  textShadow: `0 0 8px ${GLOW_COLOR[spark.glow]}`,
-                  animation: "float-y 1s ease-in-out infinite",
-                  pointerEvents: "none",
-                  zIndex: 16,
-                }}
-              >
-                ▼
-              </div>
-            ) : null
-          )}
-      </div>
-
-      {/* Water swirls under the balls once they come to rest */}
-      {phase === "respond" &&
-        round.sparks.map((spark, i) =>
-          sparkStates[spark.sparkId] || drag?.sparkId === spark.sparkId ? null : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={`swirl-${spark.sparkId}`}
-              src={ASSETS.swirl}
-              alt=""
-              aria-hidden
-              style={{
-                position: "absolute",
-                left: restPositions[i].x - 30,
-                top: restPositions[i].y + 2,
-                width: 60,
-                height: "auto",
-                opacity: 0.6,
-                pointerEvents: "none",
-                zIndex: 14,
-                animation: "bubble-pop 400ms ease-out both",
-              }}
-            />
-          )
-        )}
-
-      {/* Gates + rule card */}
+    <div ref={containerRef} onPointerDown={handleFieldTap} style={{ position: "absolute", inset: 0 }}>
+      {/* Gates (behind the balls so a dropped ball disappears into the portal) */}
       {round.gateOrder.map((symbol, gi) => (
         <RiverGate
           key={symbol}
           symbol={symbol}
           rect={gates[gi]}
+          positionLabel={positionName(gi, round.gateOrder.length)}
           state={phase === "flow" ? "open" : (gateStates[symbol] ?? "closed")}
           visible={gatesVisible}
-          highlighted={draggedOverGate === symbol || (selected !== null && canPick)}
-          onClick={canPick && selected ? () => resolvePick(selected, symbol) : undefined}
+          highlighted={draggedOverGate === symbol || (armed !== null && phase === "route")}
         />
       ))}
-      <RuleCard rule={round.rule} categories={round.categories} visible={gatesVisible} changed={round.ruleChanged} />
-
-      {splashes.map((s) => {
-        const r = gates[round.gateOrder.indexOf(s.gate)];
-        return (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={s.id}
-            src={ASSETS.splash}
-            alt=""
-            aria-hidden
-            style={{ position: "absolute", left: r.x + r.width / 2 - 40, top: r.y + r.height - 70, width: 80, height: "auto", pointerEvents: "none", zIndex: 16, animation: "tc-splash 750ms ease-out both" }}
+      {/* Tap targets for "tap a ball, then tap a gate" */}
+      {phase === "route" &&
+        armed &&
+        round.gateOrder.map((symbol, gi) => (
+          <button
+            key={`hit-${symbol}`}
+            type="button"
+            aria-label={`Send to ${positionName(gi, round.gateOrder.length)} gate`}
+            onClick={() => routeTo(armed, symbol)}
+            style={{ position: "absolute", left: gates[gi].x, top: gates[gi].y, width: gates[gi].width, height: gates[gi].height, background: "transparent", border: "none", cursor: "pointer", zIndex: 13 }}
           />
-        );
-      })}
+        ))}
 
-      {/* Fumi: marks targets at the start, quiet during motion, points at the rule card at the gate. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={FUMI_SRC}
-        alt=""
-        aria-hidden
-        style={{
-          position: "absolute",
-          left: 0,
-          top: RULE_CARD_RECT.y - 8,
-          width: 80,
-          height: "auto",
-          transform: "scaleX(-1)",
-          opacity: fumiVisible ? 1 : 0,
-          transition: "opacity 400ms ease",
-          filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.5))",
-          pointerEvents: "none",
-          zIndex: 13,
-        }}
+      <div style={{ position: "absolute", inset: 0, opacity: phase === "flow" ? 0 : 1, transition: `opacity ${TIMING.flowMs}ms ease` }}>
+        {round.sparks.map((spark, i) => {
+          const dragging = drag?.sparkId === spark.sparkId && drag.moved;
+          const pos = dragging ? { x: drag.x + drag.offsetX, y: drag.y + drag.offsetY } : sparkPos(spark.sparkId, i);
+          const isSel = selected.includes(spark.sparkId);
+          const afterSelect = phase === "reveal" || phase === "rule" || phase === "route" || phase === "result" || phase === "flow";
+          let look: SparkLook = "idle";
+          if (phase === "preview" && spark.isTarget) look = "preview";
+          else if (phase === "select" && isSel) look = "picked";
+          else if (afterSelect && isSel && !spark.isTarget) look = phase === "reveal" ? "wrong" : "gone";
+          else if (afterSelect && isSel) look = routed[spark.sparkId] ? "gone" : "revealed";
+          // A target the child missed lights up where it is (step 4, and again at the end).
+          else if ((phase === "reveal" || phase === "result") && spark.isTarget) look = "preview";
+          const showMissed = (phase === "reveal" || phase === "result") && spark.isTarget && !isSel;
+          const hidden = afterSelect && !isSel && !showMissed;
+          return (
+            <div key={spark.sparkId} style={{ opacity: hidden ? 0 : 1, transition: "opacity 400ms ease" }}>
+              <EnergySpark
+                ref={(el) => {
+                  sparkEls.current[i] = el;
+                }}
+                tailRef={(el) => {
+                  tailEls.current[i] = el;
+                }}
+                x={pos.x}
+                y={pos.y}
+                cargo={spark.cargo}
+                targetSlot={spark.isTarget ? round.sparks.filter((s) => s.isTarget).indexOf(spark) : null}
+                look={armed === spark.sparkId && look === "revealed" ? "revealed" : look}
+                dragging={dragging}
+                interactive={canRoute(spark.sparkId)}
+                animateMoves={phase !== "motion" && phase !== "select"}
+                freeMove={(phase === "motion" || phase === "select") && !isSel && !flowEnded}
+                ariaLabel={phase === "select" ? "energy ball" : `${SYMBOL_NAME[spark.cargo]} ball`}
+                onPointerDown={handlePointerDown(spark.sparkId, i)}
+                onPointerMove={handlePointerMove(spark.sparkId)}
+                onPointerUp={handlePointerUp(spark.sparkId)}
+                onPointerCancel={() => setDrag(null)}
+              />
+              {showMissed && phase === "reveal" && (
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: pos.x - 40,
+                    top: pos.y - SPARK_RADIUS - 30,
+                    width: 80,
+                    display: "flex",
+                    justifyContent: "center",
+                    pointerEvents: "none",
+                    zIndex: 17,
+                    animation: "bubble-pop 260ms var(--ease-pop) both",
+                  }}
+                >
+                  <span style={{ background: "#ffffff", color: "#1d4f8f", fontSize: 11, fontWeight: 900, padding: "3px 8px", borderRadius: 999, boxShadow: "0 3px 8px rgba(0,0,0,0.3)", whiteSpace: "nowrap" }}>This one!</span>
+                </div>
+              )}
+              {armed === spark.sparkId && phase === "route" && (
+                <div aria-hidden style={{ position: "absolute", left: pos.x - SPARK_RADIUS - 6, top: pos.y - SPARK_RADIUS - 6, width: SPARK_RADIUS * 2 + 12, height: SPARK_RADIUS * 2 + 12, borderRadius: "50%", border: "3px dashed #ffffff", animation: "glow-pulse 1s ease-in-out infinite", pointerEvents: "none", zIndex: 16 }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <RuleCard rule={round.rule} categories={round.categories} gateOrder={round.gateOrder} visible={ruleVisible} changed={round.ruleChanged} />
+
+      <StepHeader
+        step={step}
+        title={title}
+        subtitle={subtitle}
+        secondsLeft={phase === "preview" || phase === "motion" || phase === "fade" || (phase === "select" && !flowEnded) ? secondsLeft : null}
+        paused={paused}
+        onTogglePause={onTogglePause}
+        isPractice={round.isPractice}
+        roundLabel={round.label}
+        scoredRoundsDone={scoredRoundsDone}
+        practiceRoundsDone={practiceRoundsDone}
       />
-
-      {strip && (
-        // Full-width centring wrapper: the pop-in animation owns `transform`,
-        // so the strip itself can't be centred with translateX(-50%).
-        <div style={stripRowStyle}>
-          <div
-            key={`${strip.text}-${toast?.key ?? 0}`}
-            role="status"
-            style={{
-              ...stripStyle,
-              ...(strip.tone === "positive" ? stripPositive : strip.tone === "negative" ? stripNegative : stripInfo),
-            }}
-          >
-            {strip.text}
-          </div>
-        </div>
-      )}
-
-      {round.roundIndex === 0 && phase === "reveal" && <div style={ruleReminderStyle}>{CHILD_RULE_TEXT}</div>}
-
-      {phase === "respond" && (
-        <div style={picksLeftStyle} aria-label={`${round.targetCount - pickCount} sparks left to send`}>
-          {Array.from({ length: round.targetCount }, (_, i) => (
-            <span key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: i < pickCount ? "rgba(255,255,255,0.2)" : "#9bf0ff", boxShadow: i < pickCount ? "none" : "0 0 6px #9bf0ff" }} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -849,89 +897,6 @@ const veilMessageStyle: React.CSSProperties = {
   animation: "bubble-pop 260ms var(--ease-pop) both",
 };
 
-const introVignetteStyle: React.CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  background: "linear-gradient(180deg, rgba(10,30,40,0.35) 0%, transparent 35%, transparent 55%, rgba(10,30,40,0.4) 100%)",
-  pointerEvents: "none",
-};
-
-const titleWrapStyle: React.CSSProperties = {
-  position: "absolute",
-  top: SAFE_AREA_TOP + 12,
-  left: 22,
-  right: 22,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: 10,
-};
-
-// Wooden plank title, in the design's wood-and-parchment style.
-const titlePlankStyle: React.CSSProperties = {
-  background: "linear-gradient(180deg, #b77a3e 0%, #8f5a28 55%, #6e421b 100%)",
-  border: "3px solid #5a3412",
-  borderRadius: 16,
-  padding: "6px 26px 8px",
-  color: "#fff6e2",
-  fontFamily: "var(--font-display), var(--font-body), system-ui",
-  fontSize: 34,
-  fontWeight: 800,
-  letterSpacing: 0.5,
-  textShadow: "0 3px 0 #4a2a0e, 0 4px 10px rgba(0,0,0,0.4)",
-  boxShadow: "inset 0 2px 0 rgba(255,220,170,0.4), 0 10px 22px rgba(30,15,0,0.45)",
-};
-
-const questCardStyle: React.CSSProperties = {
-  background: "linear-gradient(180deg, #fbf1d9 0%, #f1dfb8 100%)",
-  border: "2px solid #c9a265",
-  borderRadius: 12,
-  padding: "10px 14px",
-  fontSize: 12.5,
-  fontWeight: 600,
-  lineHeight: 1.5,
-  color: "#3b2a14",
-  textAlign: "center",
-  boxShadow: "0 8px 18px rgba(40,25,5,0.35)",
-};
-
-const narrationGroupStyle: React.CSSProperties = {
-  position: "absolute",
-  bottom: 112,
-  left: 22,
-  right: 22,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: 14,
-  animation: "bubble-pop 420ms var(--ease-pop) both",
-};
-
-const narrationBubbleStyle: React.CSSProperties = {
-  position: "relative",
-  background: "rgba(246,245,255,0.96)",
-  color: "var(--color-ink)",
-  borderRadius: 18,
-  padding: "12px 15px",
-  fontSize: 13.5,
-  fontWeight: 600,
-  lineHeight: 1.5,
-  textAlign: "center",
-  boxShadow: "0 12px 30px rgba(0,0,0,0.3)",
-  minHeight: 108,
-};
-
-const narrationTailStyle: React.CSSProperties = {
-  position: "absolute",
-  bottom: -8,
-  left: "50%",
-  marginLeft: -8,
-  width: 16,
-  height: 16,
-  background: "rgba(246,245,255,0.96)",
-  transform: "rotate(45deg)",
-};
-
 const primaryButtonStyle: React.CSSProperties = {
   minHeight: 50,
   border: "none",
@@ -945,15 +910,6 @@ const primaryButtonStyle: React.CSSProperties = {
   transition: "opacity 300ms ease",
 };
 
-const pinnedButtonStyle: React.CSSProperties = {
-  ...primaryButtonStyle,
-  position: "absolute",
-  bottom: 40,
-  left: 24,
-  right: 24,
-  minHeight: 54,
-};
-
 const secondaryButtonStyle: React.CSSProperties = {
   minHeight: 50,
   border: "1.5px solid rgba(196,181,253,0.5)",
@@ -963,77 +919,6 @@ const secondaryButtonStyle: React.CSSProperties = {
   fontWeight: 800,
   fontSize: 14.5,
   cursor: "pointer",
-};
-
-// Messages sit at the bottom: the top of the river belongs to the gates.
-const stripRowStyle: React.CSSProperties = {
-  position: "absolute",
-  bottom: 20,
-  left: 16,
-  right: 16,
-  display: "flex",
-  justifyContent: "center",
-  zIndex: 22,
-  pointerEvents: "none",
-};
-
-const stripStyle: React.CSSProperties = {
-  maxWidth: "100%",
-  padding: "5px 14px",
-  borderRadius: 14,
-  fontSize: 12.5,
-  fontWeight: 700,
-  lineHeight: 1.35,
-  textAlign: "center",
-  boxShadow: "0 6px 16px rgba(0,0,0,0.4)",
-  animation: "bubble-pop 220ms var(--ease-pop) both",
-};
-
-const stripInfo: React.CSSProperties = {
-  background: "rgba(246,245,255,0.95)",
-  color: "var(--color-ink)",
-};
-
-const stripPositive: React.CSSProperties = {
-  background: "rgba(10,40,24,0.94)",
-  border: "1px solid rgba(61,220,132,0.6)",
-  color: "#8ff0b8",
-};
-
-const stripNegative: React.CSSProperties = {
-  background: "rgba(40,15,13,0.94)",
-  border: "1px solid rgba(226,73,63,0.55)",
-  color: "#FF9D9D",
-};
-
-const ruleReminderStyle: React.CSSProperties = {
-  position: "absolute",
-  top: SAFE_AREA_TOP + HUD_HEIGHT + 12,
-  left: 24,
-  right: 24,
-  textAlign: "center",
-  padding: "12px 16px",
-  borderRadius: 16,
-  fontSize: 12.5,
-  lineHeight: 1.5,
-  fontWeight: 600,
-  color: "var(--color-soft)",
-  background: "rgba(7,6,28,0.9)",
-  border: "1px solid rgba(155,240,255,0.35)",
-  zIndex: 23,
-  animation: "bubble-pop 300ms var(--ease-pop) both",
-  pointerEvents: "none",
-};
-
-const picksLeftStyle: React.CSSProperties = {
-  position: "absolute",
-  top: RULE_CARD_RECT.y + RULE_CARD_RECT.height + 6,
-  left: RULE_CARD_RECT.x + RULE_CARD_RECT.width / 2,
-  transform: "translateX(-50%)",
-  display: "flex",
-  gap: 5,
-  zIndex: 14,
-  pointerEvents: "none",
 };
 
 const pauseScrimStyle: React.CSSProperties = {

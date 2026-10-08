@@ -12,15 +12,22 @@ inhibition. Difficulty: medium. Target length: 3.5–4 minutes.
 ## Flow
 
 1. **Start screen:** the wooden title sign, the parchment card and Play.
-2. **How to play:** Fumi's narration, the child rule, and a looping
-   example of all 8 signal types (Tap! / Ignore).
-3. **Tutorial:** Fumi labels a two-ring ripple "Ignore", a single flash
+2. **Tutorial:** Fumi appears above the towers. Her line ("Let's learn how
+   to spot the real signal — watch the towers with me!") types out letter
+   by letter in a speech bubble and holds briefly. Then Fumi and the bubble
+   fade away, and Fumi isn't shown during play. Next, the tutorial labels a two-ring ripple "Ignore", a single flash
    "Ignore", and a three-ring pulse "That's it — tap!". The tutorial waits
    until the child taps that tower.
-4. **Practice:** 5 mixed events, unscored, with live captions.
-5. **Blocks 1–3** (scored): 10 real signals + 20 decoys each, so 30 + 60
+3. **How to Play:** Fumi returns with a second typed line ("Now let's play
+   together! Tap a tower only when you see three rings.") and then leaves
+   again. Next come 5 mixed events, unscored, with practice-coaching
+   captions ("Practice: three rings! Tap that tower!", "Practice: not three
+   rings — don't tap it.", and so on).
+4. **Blocks 1–3** (scored): first, Fumi returns once more ("Great
+   practice! Now let's play the real game — watch closely!") and leaves.
+   Then: 10 real signals + 20 decoys each, so 30 + 60
    in total. The scene never stops; each block opens with a short banner.
-6. **Completion:** stats, stars, 100 XP, coins, the River Stone, the
+5. **Completion:** stats, stars, 100 XP, coins, the River Stone, the
    Hunter Badge (if FIST), and a choice of 1 of 3 accessories.
 
 ## Events
@@ -42,11 +49,11 @@ This overlap is what makes withholding the tap hard.
 ## Responses
 
 - **Hit:** tap the tower showing three rings, or within 450 ms after they
-  vanish. Fumi hops on her raft, a relay beam fires to the next tower
+  vanish. a relay beam fires to the next tower
   (blue → purple → gold → blue), and the route line advances.
-- **False alarm:** tap a decoy, an idle tower, or the wrong tower. A very
-  short mist puff appears, with no words and no cross.
-- **Miss:** the scene doesn't pause. Practice only shows a gentle hint.
+- **False alarm:** tap a decoy, an idle tower, or the wrong tower. A red ✕
+  badge appears (matching the green ✓ for a hit), with a short mist puff.
+- **Miss:** the scene doesn't pause. How to Play only shows a gentle hint.
 
 ## Difficulty (`config.ts` → `AGE_BAND_CONFIG`)
 
@@ -86,8 +93,10 @@ This overlap is what makes withholding the tap hard.
   `components/LivingScene.tsx`. Regenerate them if the background changes.
 - `ui/title-sign.png`: the title sign, upscaled and cut out.
 - `collectibles/river-stone.png`: the River Stone, upscaled 4×.
-- Tower gem, base and tap-zone positions (`TOWERS`) and the raft position
-  (`RAFT`) in `config.ts` are measured off the background.
+- Tower gem, base and tap-zone positions (`TOWERS`) and Fumi's position
+  (`FUMI_PERCH`) in `config.ts` are measured off the background.
+- `mascot/fumi.png`: edges cleaned so no dark outline or bottom strip from
+  the original background remains.
 
 ## Structure
 
@@ -96,7 +105,7 @@ signal-watch/
   SignalWatchGame.tsx   Screens, tutorial, continuous stage runner, tap judging, completion
   types.ts / config.ts  Contracts / tunables (blocks, timing, rewards, layout, copy)
   engine/
-    schedule.ts           Builds practice + block timelines from a seed; tap lookups
+    schedule.ts           Builds How to Play + block timelines from a seed; tap lookups
     metrics.ts            Metrics, stars, FIST, rewards
     rng.ts                Seeded PRNG
   components/
@@ -104,8 +113,7 @@ signal-watch/
     RiverLife.tsx         Unscored river noise (leaves, fish, bubbles, ripples)
     SignalEffect.tsx      SVG effect for each signal type
     RelayFeedback.tsx     Relay beam (hit) and mist puff (false alarm)
-    FumiRaft.tsx          Fumi on her raft; hops on genuine activations
+    FumiGuide.tsx         Fumi + typed speech bubble introducing the tutorial
     SignalHud.tsx         Pause, stage label, route-progress line
-    SignalTypesGuide.tsx  The 8-tile signal type guide
   lib/sessionReporter.ts  Backend seam (currently localStorage)
 ```

@@ -1,9 +1,7 @@
-import type { AgeBand, CargoSymbol, RoundPlan, RouteRule, SparkPlan, TargetGlow } from "../types";
+import type { AgeBand, CargoSymbol, RoundPlan, RouteRule, SparkPlan } from "../types";
 import { AGE_BAND_CONFIG, ALL_SYMBOLS, PRACTICE_ROUNDS, SCORED_ROUNDS, speedTierFor } from "../config";
 import { createRng, randInt, shuffle, type Rng } from "./rng";
 import { sampleStartPositions, simulateMotion } from "./motion";
-
-const GLOWS: TargetGlow[] = ["green", "purple", "gold"];
 
 function rampInt(min: number, max: number, index: number, total: number): number {
   const t = total > 1 ? index / (total - 1) : 0;
@@ -37,6 +35,7 @@ type RoundSpec = {
   rule: RouteRule;
   speedPxPerSec: number;
   motionMs: number;
+  selectMs: number;
   separation: number;
   crossingPull: number;
   shuffleGates: boolean;
@@ -48,10 +47,15 @@ function buildRound(roundIndex: number, spec: RoundSpec, prevRule: RouteRule | n
   const categories: CargoSymbol[] = shuffle(ALL_SYMBOLS, rng).slice(0, spec.targetCount >= 3 ? 3 : 2);
   const gateOrder = spec.shuffleGates ? shuffle(categories, rng) : [...categories];
 
-  const targetSlots = shuffle(
-    Array.from({ length: spec.sparkCount }, (_, i) => i),
-    rng
-  ).slice(0, spec.targetCount);
+  // Balls start alternately in the left (even index) and right (odd index)
+  // channel, and stay in their channel. Targets are taken alternately from
+  // each side, so the glowing balls are always on opposite sides.
+  const left = shuffle(Array.from({ length: spec.sparkCount }, (_, i) => i).filter((i) => i % 2 === 0), rng);
+  const right = shuffle(Array.from({ length: spec.sparkCount }, (_, i) => i).filter((i) => i % 2 === 1), rng);
+  const firstLeft = rng() < 0.5;
+  const targetSlots = Array.from({ length: spec.targetCount }, (_, k) => ((k % 2 === 0) === firstLeft ? left : right)[Math.floor(k / 2)]);
+  // Targets carry distinct symbols (one per gate); decoys carry random ones
+  // from the same set, so a revealed symbol never proves a ball was a target.
   const targetCargo = shuffle(categories, rng).slice(0, spec.targetCount);
 
   const sparks: SparkPlan[] = Array.from({ length: spec.sparkCount }, (_, i) => {
@@ -59,8 +63,7 @@ function buildRound(roundIndex: number, spec: RoundSpec, prevRule: RouteRule | n
     return {
       sparkId: `r${roundIndex}-s${i}`,
       isTarget: t !== -1,
-      cargo: t !== -1 ? targetCargo[t] : null,
-      glow: t !== -1 ? GLOWS[t] : null,
+      cargo: t !== -1 ? targetCargo[t] : categories[Math.floor(rng() * categories.length)],
     };
   });
 
@@ -69,7 +72,7 @@ function buildRound(roundIndex: number, spec: RoundSpec, prevRule: RouteRule | n
     start,
     targetIndices: targetSlots,
     speedPxPerSec: spec.speedPxPerSec,
-    durationMs: spec.motionMs,
+    durationMs: spec.motionMs + spec.selectMs,
     separation: spec.separation,
     crossingPull: spec.crossingPull,
     rng,
@@ -88,6 +91,7 @@ function buildRound(roundIndex: number, spec: RoundSpec, prevRule: RouteRule | n
     speedPxPerSec: spec.speedPxPerSec,
     speedTier: speedTierFor(spec.speedPxPerSec),
     motionMs: spec.motionMs,
+    selectMs: spec.selectMs,
     motion,
   };
 }
@@ -102,7 +106,7 @@ export function buildSession(ageBand: AgeBand, sessionSeed: string): RoundPlan[]
     ...PRACTICE_ROUNDS.map((p, i) => ({
       ...p,
       isPractice: true,
-      label: `Practice ${i + 1}/${PRACTICE_ROUNDS.length}`,
+      label: `How to Play ${i + 1}/${PRACTICE_ROUNDS.length}`,
       separation: 1,
       crossingPull: 0,
       shuffleGates: false,
@@ -115,6 +119,7 @@ export function buildSession(ageBand: AgeBand, sessionSeed: string): RoundPlan[]
       rule: scoredRules[i],
       speedPxPerSec: rampInt(cfg.speedRange[0], cfg.speedRange[1], i, SCORED_ROUNDS),
       motionMs: rampInt(cfg.motionMsRange[0], cfg.motionMsRange[1], i, SCORED_ROUNDS),
+      selectMs: rampInt(cfg.selectMsRange[0], cfg.selectMsRange[1], i, SCORED_ROUNDS),
       separation: cfg.separation,
       crossingPull: cfg.crossingPull,
       shuffleGates: cfg.shuffleGates,

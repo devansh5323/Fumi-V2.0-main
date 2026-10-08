@@ -44,7 +44,7 @@ function buildPractice(): StagePlan {
     t = startMs + PRACTICE_VISIBLE_MS;
     return { eventId: `p-e${i}`, stageIndex: 0, isPractice: true, tower: e.tower, type: e.type, startMs, durationMs: PRACTICE_VISIBLE_MS };
   });
-  return { stageIndex: 0, isPractice: true, blockNumber: null, label: "Practice", banner: "Practice — 5 signals", events, totalMs: t + STAGE_TAIL_MS };
+  return { stageIndex: 0, isPractice: true, blockNumber: null, label: "How to Play", banner: "How to Play — practice 5 signals", events, totalMs: t + STAGE_TAIL_MS };
 }
 
 function buildBlock(stageIndex: number, blockNumber: number, spec: BlockSpec, sessionSeed: string): StagePlan {

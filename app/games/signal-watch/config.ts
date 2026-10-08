@@ -132,8 +132,17 @@ export const TOWERS: TowerDef[] = [
   { id: 2, theme: "gold", name: "Sun tower", gem: { x: 320, y: 418 }, base: { x: 322, y: 548 }, hit: { x: 272, y: 335, width: 100, height: 222 } },
 ];
 
-// Fumi's raft, floating on the river below the towers.
-export const RAFT = { x: 196, y: 632 };
+// Where Fumi floats: in the sky, above the middle tower.
+export const FUMI_PERCH = { x: 195, y: 262 };
+
+// What Fumi says when Play is tapped, before the tutorial starts.
+export const TUTORIAL_GREETING = "Let's learn how to spot the real signal — watch the towers with me!";
+// What Fumi says before the "How to Play" round (5 unscored signals).
+export const HOW_TO_PLAY_GREETING = "Now let's play together! Tap a tower only when you see three rings.";
+// What Fumi says after How to Play, before the scored game begins.
+export const REAL_GAME_GREETING = "Great practice! Now let's play the real game — watch closely!";
+// How long the fully typed greeting stays up before Fumi leaves.
+export const GREETING_HOLD_MS = 1300;
 
 // ---------------------------------------------------------------------------
 // Copy

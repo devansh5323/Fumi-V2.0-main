@@ -1,30 +1,32 @@
 "use client";
 
 import type { Ref } from "react";
-import type { CargoSymbol, TargetGlow } from "../types";
-import { ASSETS, SPARK_RADIUS } from "../config";
-import { SymbolIcon } from "./SymbolIcon";
+import type { CargoSymbol } from "../types";
+import { ASSETS, PREVIEW_GLOW, SPARK_RADIUS, SYMBOL_COLOR } from "../config";
 
-export const GLOW_COLOR: Record<TargetGlow, string> = {
-  green: "#3DDC84",
-  purple: "#B45CFF",
-  gold: "#FFC93C",
-};
-
-export type SparkVisualState = "idle" | "selected" | "absorbed" | "fizzled";
+// preview  — target lit in its symbol's colour (no symbol yet)
+// idle     — the plain bubble every ball looks like while moving
+// picked   — selected by the child (white ring), symbol still hidden
+// revealed — selected and showing its glowing symbol badge
+// wrong    — selected but not one of ours (step 4): greyed bubble with a ✕
+// gone     — routed through a gate (or a wrong ball fading out)
+export type SparkLook = "idle" | "preview" | "picked" | "revealed" | "wrong" | "gone";
 
 type EnergySparkProps = {
   ref?: Ref<HTMLDivElement>;
+  tailRef?: Ref<HTMLDivElement>;
   x: number;
   y: number;
-  glow: TargetGlow | null;
-  glowVisible: boolean;
-  cargo: CargoSymbol | null;
-  cargoVisible: boolean;
-  visualState: SparkVisualState;
+  cargo: CargoSymbol;
+  targetSlot: number | null; // which target this is (preview glow colour)
+  look: SparkLook;
   dragging: boolean;
   interactive: boolean;
   animateMoves: boolean;
+  // While flowing, the motion loop writes `transform` directly each frame,
+  // so React must not set it.
+  freeMove?: boolean;
+  ariaLabel?: string;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -32,39 +34,43 @@ type EnergySparkProps = {
 };
 
 const SIZE = SPARK_RADIUS * 2;
+const fill: React.CSSProperties = { position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" };
 
-const imgStyle: React.CSSProperties = { position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" };
+const SPARKLES = [
+  { x: -8, y: -6, s: 7, d: 0 },
+  { x: 40, y: 2, s: 6, d: 0.3 },
+  { x: 34, y: 38, s: 5, d: 0.6 },
+  { x: -4, y: 34, s: 5, d: 0.9 },
+];
 
-// Every ball is the design's blue ball once the preview ends. During the
-// preview a target cross-fades to its glowing green/purple/yellow ball and
-// shows its symbol — so nothing distinguishes a target while it moves.
 export function EnergySpark({
   ref,
+  tailRef,
   x,
   y,
-  glow,
-  glowVisible,
   cargo,
-  cargoVisible,
-  visualState,
+  targetSlot,
+  look,
   dragging,
   interactive,
   animateMoves,
+  freeMove = false,
+  ariaLabel,
   onPointerDown,
   onPointerMove,
   onPointerUp,
   onPointerCancel,
 }: EnergySparkProps) {
-  const lit = glowVisible && glow !== null;
-  const glowColor = glow ? GLOW_COLOR[glow] : null;
-  const gone = visualState === "absorbed" || visualState === "fizzled";
-  const scale = dragging ? 1.15 : gone ? 0.3 : 1;
+  const color = look === "preview" ? PREVIEW_GLOW[targetSlot ?? 0] : SYMBOL_COLOR[cargo];
+  const lit = look === "preview" || look === "revealed";
+  const gone = look === "gone";
 
   return (
     <div
       ref={ref}
+      data-tc-ball=""
       role={interactive ? "button" : undefined}
-      aria-label={interactive ? "energy spark" : undefined}
+      aria-label={interactive ? (ariaLabel ?? "energy ball") : undefined}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -75,67 +81,114 @@ export function EnergySpark({
         top: 0,
         width: SIZE,
         height: SIZE,
-        transform: `translate(${x - SPARK_RADIUS}px, ${y - SPARK_RADIUS}px)`,
-        transition: animateMoves && !dragging ? "transform 320ms cubic-bezier(0.22,1,0.36,1), opacity 320ms ease" : "opacity 320ms ease",
+        ...(freeMove ? {} : { transform: `translate(${x - SPARK_RADIUS}px, ${y - SPARK_RADIUS}px)` }),
+        transition: animateMoves && !dragging ? "transform 420ms cubic-bezier(0.22,1,0.36,1), opacity 380ms ease" : "opacity 380ms ease",
         opacity: gone ? 0 : 1,
         zIndex: dragging ? 35 : 15,
-        cursor: interactive ? (dragging ? "grabbing" : "grab") : "default",
+        cursor: interactive ? (dragging ? "grabbing" : "pointer") : "default",
         touchAction: "none",
         pointerEvents: interactive ? "auto" : "none",
       }}
     >
-      {/* Soft glow halo in the target's colour (preview only). */}
+      {/* Generous invisible tap area — the balls are small and moving. */}
+      {interactive && <div aria-hidden style={{ position: "absolute", inset: -12, borderRadius: "50%" }} />}
+
+      {/* Motion trail — rotated/stretched each frame by the motion loop. */}
+      <div
+        ref={tailRef}
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: SPARK_RADIUS,
+          top: SPARK_RADIUS - 6,
+          width: 0,
+          height: 12,
+          borderRadius: 6,
+          transformOrigin: "0 50%",
+          background: "linear-gradient(90deg, rgba(255,255,255,0.7), rgba(200,240,255,0))",
+          boxShadow: "0 0 6px rgba(255,255,255,0.5)",
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Glow halo in the symbol's colour */}
       <div
         aria-hidden
         style={{
           position: "absolute",
-          inset: -10,
+          inset: look === "preview" ? -22 : -16,
           borderRadius: "50%",
-          background: glowColor ? `radial-gradient(circle, ${glowColor}cc 35%, ${glowColor}00 72%)` : "none",
+          background: `radial-gradient(circle, ${color} 32%, ${color}88 52%, ${color}00 72%)`,
           opacity: lit ? 1 : 0,
-          transition: "opacity 450ms ease",
+          transition: "opacity 420ms ease",
           animation: lit ? "glow-pulse 1.2s ease-in-out infinite" : undefined,
         }}
       />
+      {lit &&
+        SPARKLES.map((s, i) => (
+          <svg
+            key={i}
+            width={s.s * 2}
+            height={s.s * 2}
+            viewBox="-1 -1 2 2"
+            style={{ position: "absolute", left: s.x, top: s.y, pointerEvents: "none", animation: `twinkle 1.4s ease-in-out ${s.d}s infinite` }}
+            aria-hidden
+          >
+            <path d="M0 -1 Q0 0 1 0 Q0 0 0 1 Q0 0 -1 0 Q0 0 0 -1 Z" fill="#ffffff" />
+          </svg>
+        ))}
 
       <div
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: "50%",
-          transform: `scale(${scale})`,
-          transition: "transform 220ms var(--ease-pop), filter 200ms ease",
-          filter:
-            visualState === "selected"
-              ? "drop-shadow(0 0 0 #fff) drop-shadow(0 0 8px rgba(255,255,255,0.95))"
-              : visualState === "fizzled"
-                ? "hue-rotate(160deg) saturate(1.6)"
-                : "drop-shadow(0 4px 5px rgba(0,30,60,0.45))",
+          transform: `scale(${dragging ? 1.15 : gone ? 0.3 : 1})`,
+          transition: "transform 240ms var(--ease-pop)",
         }}
       >
+        {/* Soft contact shadow (a gradient, not a filter — keeps rendering cheap) */}
+        <div aria-hidden style={{ position: "absolute", left: "8%", right: "8%", top: "72%", height: "40%", borderRadius: "50%", background: "radial-gradient(ellipse, rgba(0,40,80,0.35), rgba(0,40,80,0) 70%)" }} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ASSETS.ball.neutral} alt="" draggable={false} style={imgStyle} />
-        {glow && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={ASSETS.ball[glow]} alt="" draggable={false} style={{ ...imgStyle, opacity: lit ? 1 : 0, transition: "opacity 450ms ease" }} />
-        )}
-        {visualState === "selected" && <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "3px solid #ffffff" }} />}
-        {cargo && (
+        <img src={ASSETS.ball} alt="" draggable={false} style={{ ...fill, opacity: look === "revealed" ? 0 : 1, transition: "opacity 300ms ease" }} />
+        {/* Preview: the bubble tinted to the symbol colour */}
+        <div
+          aria-hidden
+          style={{
+            ...fill,
+            borderRadius: "50%",
+            background: `radial-gradient(circle at 35% 30%, #ffffff 0%, ${color} 40%, ${color} 72%, rgba(0,0,0,0.2) 100%)`,
+            boxShadow: `0 0 0 2px #ffffff, 0 0 14px 4px ${color}`,
+            opacity: look === "preview" ? 1 : 0,
+            transition: "opacity 420ms ease",
+          }}
+        />
+        {/* Revealed: the symbol badge */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={ASSETS.symbol(cargo)} alt="" draggable={false} style={{ ...fill, opacity: look === "revealed" ? 1 : 0, transform: look === "revealed" ? "scale(1)" : "scale(0.4)", transition: "opacity 300ms ease, transform 380ms var(--ease-pop)" }} />
+        {look === "wrong" && (
           <div
+            aria-hidden
             style={{
               position: "absolute",
               inset: 0,
+              borderRadius: "50%",
+              background: "rgba(90,100,120,0.55)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              opacity: cargoVisible ? 1 : 0,
-              transition: "opacity 400ms ease",
-              filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))",
+              color: "#ffffff",
+              fontSize: SPARK_RADIUS * 1.1,
+              fontWeight: 900,
+              textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+              animation: "bubble-pop 260ms var(--ease-pop) both",
             }}
           >
-            <SymbolIcon symbol={cargo} size={26} />
+            ✕
           </div>
         )}
+        {look === "picked" && <div aria-hidden style={{ position: "absolute", inset: -4, borderRadius: "50%", border: "3px solid #ffffff", boxShadow: "0 0 12px 3px rgba(255,255,255,0.9)", animation: "bubble-pop 220ms var(--ease-pop) both" }} />}
       </div>
     </div>
   );

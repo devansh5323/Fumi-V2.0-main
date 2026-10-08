@@ -14,13 +14,14 @@ export type PracticeRoundSpec = {
   rule: RouteRule;
   speedPxPerSec: number;
   motionMs: number;
+  selectMs: number;
 };
 
 export const PRACTICE_ROUNDS: PracticeRoundSpec[] = [
-  { sparkCount: 4, targetCount: 2, rule: "match", speedPxPerSec: 45, motionMs: 5000 },
-  { sparkCount: 5, targetCount: 2, rule: "match", speedPxPerSec: 50, motionMs: 5000 },
-  { sparkCount: 6, targetCount: 2, rule: "match", speedPxPerSec: 55, motionMs: 5000 },
-  { sparkCount: 6, targetCount: 2, rule: "swap", speedPxPerSec: 55, motionMs: 5000 },
+  { sparkCount: 6, targetCount: 2, rule: "match", speedPxPerSec: 45, motionMs: 5000, selectMs: 8000 },
+  { sparkCount: 7, targetCount: 2, rule: "match", speedPxPerSec: 50, motionMs: 5000, selectMs: 8000 },
+  { sparkCount: 8, targetCount: 2, rule: "match", speedPxPerSec: 55, motionMs: 5000, selectMs: 7500 },
+  { sparkCount: 8, targetCount: 2, rule: "swap", speedPxPerSec: 55, motionMs: 5000, selectMs: 7500 },
 ];
 
 // Scored-round difficulty, per age band. Spark count, speed and motion time
@@ -32,6 +33,8 @@ export type AgeBandConfig = {
   threeTargetsFromRound: number | null;
   speedRange: [number, number];
   motionMsRange: [number, number];
+  // Step 3 window (balls still flowing), shrinking from first to last round.
+  selectMsRange: [number, number];
   // How many times the rule flips across the 16 scored rounds.
   ruleSwitches: number;
   // Motion feel. separation pushes sparks apart (fewer close crossings);
@@ -44,20 +47,22 @@ export type AgeBandConfig = {
 
 export const AGE_BAND_CONFIG: Record<AgeBand, AgeBandConfig> = {
   "6-10": {
-    sparkCountRange: [6, 8],
+    sparkCountRange: [8, 12],
     threeTargetsFromRound: null,
     speedRange: [60, 90],
     motionMsRange: [5000, 6000],
+    selectMsRange: [7000, 5000],
     ruleSwitches: 3,
     separation: 1,
     crossingPull: 0,
     shuffleGates: false,
   },
   "11-16": {
-    sparkCountRange: [8, 10],
+    sparkCountRange: [10, 14],
     threeTargetsFromRound: 6,
     speedRange: [80, 125],
     motionMsRange: [5000, 6500],
+    selectMsRange: [6000, 4000],
     ruleSwitches: 6,
     separation: 0.25,
     crossingPull: 0.7,
@@ -65,9 +70,37 @@ export const AGE_BAND_CONFIG: Record<AgeBand, AgeBandConfig> = {
   },
 };
 
-// The design's 8 symbols. Each round draws its 2 (or 3) gate emblems from
-// these at random.
-export const ALL_SYMBOLS: CargoSymbol[] = ["star", "moon", "heart", "leaf", "sun", "swirl", "butterfly", "snowflake"];
+// The design's symbol set ("set can change per level"). Each round draws
+// its 2 (or 3) gate symbols from these at random.
+export const ALL_SYMBOLS: CargoSymbol[] = ["sun", "moon", "leaf", "star", "drop", "heart", "bolt", "swirl", "mountain"];
+
+export const SYMBOL_NAME: Record<CargoSymbol, string> = {
+  sun: "Sun",
+  moon: "Moon",
+  leaf: "Leaf",
+  star: "Star",
+  drop: "Drop",
+  heart: "Heart",
+  bolt: "Bolt",
+  swirl: "Swirl",
+  mountain: "Mountain",
+};
+
+// Step 1 glow colours, by target slot (the mockup's gold and purple).
+export const PREVIEW_GLOW = ["#FFC21F", "#B061FF", "#36D97A"];
+
+// Each symbol's badge colour — used for a revealed ball's glow.
+export const SYMBOL_COLOR: Record<CargoSymbol, string> = {
+  sun: "#FFB21E",
+  moon: "#9B5CF0",
+  leaf: "#3FB34F",
+  star: "#2F80E8",
+  drop: "#1FA8EE",
+  heart: "#F0527A",
+  bolt: "#FF9A2E",
+  swirl: "#A35CE8",
+  mountain: "#B06A3C",
+};
 
 export function speedTierFor(speedPxPerSec: number): SpeedTier {
   if (speedPxPerSec < 70) return "slow";
@@ -80,10 +113,12 @@ export function speedTierFor(speedPxPerSec: number): SpeedTier {
 // ---------------------------------------------------------------------------
 
 export const TIMING = {
-  revealMs: 3000, // targets glow + show their emblem, everything still
-  fadeMs: 500, // glow and emblem fade out, still stationary
-  resultMs: 1100, // true targets briefly revealed after the last pick
-  flowMs: 800, // gates swing open, the stream surges, next round
+  previewMs: 3000, // step 1: targets glow, everything still
+  fadeMs: 400, // glow fades, still stationary
+  revealMs: 1100, // step 4: selected balls show their symbols
+  ruleMs: 1500, // step 5: the rule card appears before the gates rise
+  resultMs: 1000, // missed targets briefly re-light
+  flowMs: 700, // gates swing open, the stream surges, next round
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -114,66 +149,32 @@ export const PLAY_AREA = { width: 390, height: 700 };
 export const SAFE_AREA_TOP = 44;
 export const HUD_HEIGHT = 52;
 
-export const SPARK_RADIUS = 22;
+export const SPARK_RADIUS = 20;
 
-// The painted river's left/right water edges at each screen height (px),
-// measured off the background's water mask. Sparks stay inside these.
-// Re-measure if the background changes.
-export const RIVER_EDGES: [y: number, left: number, right: number][] = [
-  [100, 76, 327], [120, 86, 336], [140, 97, 345], [160, 108, 345], [180, 111, 319], [200, 100, 293],
-  [220, 75, 277], [240, 48, 295], [260, 44, 318], [280, 61, 342], [300, 80, 354], [320, 76, 369],
-  [340, 57, 381], [360, 81, 389], [380, 118, 389], [400, 156, 389], [420, 137, 389], [440, 118, 389],
-  [460, 97, 384], [480, 91, 371], [500, 82, 333], [520, 66, 295], [540, 50, 263], [560, 39, 255],
-  [580, 41, 257], [600, 59, 277], [620, 75, 309], [640, 90, 341], [660, 94, 354], [680, 99, 356],
-];
-
-export function riverEdgesAt(y: number): [number, number] {
-  const rows = RIVER_EDGES;
-  if (y <= rows[0][0]) return [rows[0][1], rows[0][2]];
-  for (let i = 1; i < rows.length; i++) {
-    if (y <= rows[i][0]) {
-      const [y0, l0, r0] = rows[i - 1];
-      const [y1, l1, r1] = rows[i];
-      const t = (y - y0) / (y1 - y0);
-      return [l0 + (l1 - l0) * t, r0 + (r1 - r0) * t];
-    }
-  }
-  const last = rows[rows.length - 1];
-  return [last[1], last[2]];
+// Gates stand across the heads of the two channels, at the waterfall —
+// gold on the left, purple on the right (a third, teal, in the middle for
+// 3-category rounds).
+export const GATE_ASPECT = 1.12; // width / height of the gate art
+export const GATE_BOTTOM = 266; // just in front of the waterfall's base
+export type GateArt = "gold" | "purple" | "teal";
+export function gateRects(count: number): (Rect & { art: GateArt })[] {
+  const w = count === 2 ? 88 : 80; // smaller = further back, by the falls
+  const h = w / GATE_ASPECT;
+  const centres = count === 2 ? [76, 306] : [70, 192, 314];
+  const arts: GateArt[] = count === 2 ? ["gold", "purple"] : ["gold", "teal", "purple"];
+  return centres.map((cx, i) => ({ x: cx - w / 2, y: GATE_BOTTOM - h, width: w, height: h, art: arts[i] }));
 }
 
-// Like the design, the gates stand across the river at the TOP of the
-// screen, with the rule card just below them. Sparks move in the band below.
-export const GATE_TOP = SAFE_AREA_TOP + HUD_HEIGHT + 6;
-export const GATE_ASPECT = 0.91; // width / height of the gate art
-
-export function gateRects(count: number): Rect[] {
-  const gap = count === 2 ? 14 : 8;
-  const width = count === 2 ? 108 : 92;
-  const height = width / GATE_ASPECT;
-  const span = width * count + gap * (count - 1);
-  const left = 206 - span / 2;
-  return Array.from({ length: count }, (_, i) => ({ x: left + i * (width + gap), y: GATE_TOP, width, height }));
-}
-
-export const RULE_CARD_RECT: Rect = { x: 120, y: 226, width: 180, height: 54 };
-
-export const SPARK_FIELD = { yMin: 300, yMax: 640 };
+export const RULE_CARD_TOP = 100;
 
 const A = "/games/twin-current";
 export const ASSETS = {
   background: `${A}/backgrounds/river.jpg`,
   riverMask: `${A}/backgrounds/river-mask.png`,
-  ball: {
-    neutral: `${A}/balls/blue.png`,
-    green: `${A}/balls/green.png`,
-    purple: `${A}/balls/purple.png`,
-    gold: `${A}/balls/yellow.png`,
-  },
+  fallsMask: `${A}/backgrounds/falls-mask.png`,
+  ball: `${A}/balls/ball.png`,
   symbol: (s: CargoSymbol) => `${A}/symbols/${s}.png`,
-  gate: (s: CargoSymbol) => `${A}/gates/${s}.png`,
-  splash: `${A}/effects/splash.png`,
-  swirl: `${A}/effects/swirl.png`,
+  gate: { gold: `${A}/gates/gate-gold.png`, purple: `${A}/gates/gate-purple.png`, teal: `${A}/gates/gate-teal.png` } as Record<GateArt, string>,
   fumi: `${A}/mascot/fumi.png`,
 };
 
