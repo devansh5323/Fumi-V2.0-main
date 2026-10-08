@@ -6,7 +6,6 @@ type StepHeaderProps = {
   step: number;
   title: string;
   subtitle: string;
-  secondsLeft: number | null; // timer chip; hidden when null
   paused: boolean;
   onTogglePause: () => void;
   isPractice: boolean;
@@ -32,9 +31,9 @@ const glass: React.CSSProperties = {
 };
 
 // The top bar: round pause button, the round progress bar (4 segments in
-// How to Play, 16 in the scored rounds) and a countdown chip. Step text is
+// How to Play, 12 in the scored rounds). There is no timer. Step text is
 // screen-reader only.
-export function StepHeader({ step, title, subtitle, secondsLeft, paused, onTogglePause, isPractice, roundLabel, scoredRoundsDone, practiceRoundsDone }: StepHeaderProps) {
+export function StepHeader({ step, title, subtitle, paused, onTogglePause, isPractice, roundLabel, scoredRoundsDone, practiceRoundsDone }: StepHeaderProps) {
   // How to Play counts its own 4 rounds; the real game then counts 16.
   const segments = isPractice ? PRACTICE_ROUNDS.length : SCORED_ROUNDS;
   const done = isPractice ? practiceRoundsDone : scoredRoundsDone;
@@ -68,25 +67,6 @@ export function StepHeader({ step, title, subtitle, secondsLeft, paused, onToggl
         ))}
       </div>
 
-      <div
-        aria-label={secondsLeft === null ? undefined : `${secondsLeft} seconds left`}
-        style={{
-          ...glass,
-          flexShrink: 0,
-          minWidth: 42,
-          height: 32,
-          borderRadius: 12,
-          padding: "0 8px",
-          fontWeight: 800,
-          fontSize: 14,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          visibility: secondsLeft === null ? "hidden" : "visible",
-        }}
-      >
-        {secondsLeft ?? 0}s
-      </div>
     </div>
   );
 }

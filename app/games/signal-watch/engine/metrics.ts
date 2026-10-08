@@ -1,5 +1,5 @@
 import type { AgeBand, BlockPerformance, DecoyType, GameOutcome, GameRewards, SignalResult, SignalWatchMetrics, StageResult } from "../types";
-import { REWARDS } from "../config";
+import { REWARDS, SPEED_PHASES } from "../config";
 
 function pct(num: number, den: number): number {
   return den === 0 ? 0 : Math.round((num / den) * 1000) / 10;
@@ -34,17 +34,18 @@ export function computeMetrics(blocks: StageResult[], gameplayDurationMs: number
   };
   for (const t of tapped) distractorsTappedByType[t.type as DecoyType] += 1;
 
-  const performanceByBlock: BlockPerformance[] = blocks.map((b) => {
-    const s = summarise(b.signals);
+  const performanceByBlock: BlockPerformance[] = SPEED_PHASES.map((ph, i) => {
+    const sm = summarise(signals.filter((sig) => sig.phase === i + 1));
     return {
-      block: b.blockNumber ?? 0,
-      realSignals: s.real.length,
-      detected: s.hits.length,
-      detectionAccuracyPct: pct(s.hits.length, s.real.length),
-      distractors: s.decoys.length,
-      distractorsTapped: s.tapped.length,
-      rejectionAccuracyPct: pct(s.decoys.length - s.tapped.length, s.decoys.length),
-      avgResponseMs: avg(s.hits.map((h) => h.reactionMs ?? 0)),
+      block: i + 1,
+      intervalMs: ph.intervalMs,
+      realSignals: sm.real.length,
+      detected: sm.hits.length,
+      detectionAccuracyPct: pct(sm.hits.length, sm.real.length),
+      distractors: sm.decoys.length,
+      distractorsTapped: sm.tapped.length,
+      rejectionAccuracyPct: pct(sm.decoys.length - sm.tapped.length, sm.decoys.length),
+      avgResponseMs: avg(sm.hits.map((h) => h.reactionMs ?? 0)),
     };
   });
 

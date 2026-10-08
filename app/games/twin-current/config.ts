@@ -4,10 +4,20 @@ import type { AgeBand, CargoSymbol, QuestContext, Rect, RouteRule, SpeedTier } f
 // Session shape
 // ---------------------------------------------------------------------------
 
-export const SCORED_ROUNDS = 16;
+// 12 scored rounds x 2 target balls = 24 symbols to identify.
+export const SCORED_ROUNDS = 12;
+export const TARGETS_PER_ROUND = 2;
+
+// Balls on screen per scored round (2 targets + the rest decoys):
+// rounds 1–4: 6, rounds 5–8: 10, rounds 9–12: 12.
+export function ballsForRound(roundIndex0: number): number {
+  if (roundIndex0 < 4) return 6;
+  if (roundIndex0 < 8) return 10;
+  return 12;
+}
 
 // Tutorial rounds, shared by both age bands. Practice is never scored and
-// never costs energy. Round 4 exists purely to demonstrate a rule change.
+// never costs energy.
 export type PracticeRoundSpec = {
   sparkCount: number;
   targetCount: number;
@@ -21,21 +31,19 @@ export const PRACTICE_ROUNDS: PracticeRoundSpec[] = [
   { sparkCount: 6, targetCount: 2, rule: "match", speedPxPerSec: 45, motionMs: 5000, selectMs: 8000 },
   { sparkCount: 7, targetCount: 2, rule: "match", speedPxPerSec: 50, motionMs: 5000, selectMs: 8000 },
   { sparkCount: 8, targetCount: 2, rule: "match", speedPxPerSec: 55, motionMs: 5000, selectMs: 7500 },
-  { sparkCount: 8, targetCount: 2, rule: "swap", speedPxPerSec: 55, motionMs: 5000, selectMs: 7500 },
+  { sparkCount: 8, targetCount: 2, rule: "match", speedPxPerSec: 55, motionMs: 5000, selectMs: 7500 },
 ];
 
-// Scored-round difficulty, per age band. Spark count, speed and motion time
-// all ramp linearly from the first scored round to the last.
+// Scored-round difficulty, per age band. Ball counts follow ballsForRound;
+// speed and motion time ramp linearly from the first scored round to the last.
 export type AgeBandConfig = {
-  sparkCountRange: [number, number];
-  // Target count for scored round i: 3 from `threeTargetsFromRound` on (if
-  // set), else 2. Three targets always come with three gate categories.
-  threeTargetsFromRound: number | null;
   speedRange: [number, number];
   motionMsRange: [number, number];
   // Step 3 window (balls still flowing), shrinking from first to last round.
   selectMsRange: [number, number];
-  // How many times the rule flips across the 16 scored rounds.
+  // How many times the rule flips across the 12 scored rounds. 0: there is
+  // no rule on screen, so every ball simply goes to the gate with its own
+  // symbol (MATCH).
   ruleSwitches: number;
   // Motion feel. separation pushes sparks apart (fewer close crossings);
   // crossingPull steers targets toward nearby decoys (more crossings).
@@ -47,23 +55,19 @@ export type AgeBandConfig = {
 
 export const AGE_BAND_CONFIG: Record<AgeBand, AgeBandConfig> = {
   "6-10": {
-    sparkCountRange: [8, 12],
-    threeTargetsFromRound: null,
     speedRange: [60, 90],
     motionMsRange: [5000, 6000],
     selectMsRange: [7000, 5000],
-    ruleSwitches: 3,
+    ruleSwitches: 0,
     separation: 1,
     crossingPull: 0,
     shuffleGates: false,
   },
   "11-16": {
-    sparkCountRange: [10, 14],
-    threeTargetsFromRound: 6,
     speedRange: [80, 125],
     motionMsRange: [5000, 6500],
     selectMsRange: [6000, 4000],
-    ruleSwitches: 6,
+    ruleSwitches: 0,
     separation: 0.25,
     crossingPull: 0.7,
     shuffleGates: true,
@@ -116,7 +120,6 @@ export const TIMING = {
   previewMs: 3000, // step 1: targets glow, everything still
   fadeMs: 400, // glow fades, still stationary
   revealMs: 1100, // step 4: selected balls show their symbols
-  ruleMs: 1500, // step 5: the rule card appears before the gates rise
   resultMs: 1000, // missed targets briefly re-light
   flowMs: 700, // gates swing open, the stream surges, next round
 } as const;
@@ -165,7 +168,6 @@ export function gateRects(count: number): (Rect & { art: GateArt })[] {
   return centres.map((cx, i) => ({ x: cx - w / 2, y: GATE_BOTTOM - h, width: w, height: h, art: arts[i] }));
 }
 
-export const RULE_CARD_TOP = 100;
 
 const A = "/games/twin-current";
 export const ASSETS = {
@@ -176,9 +178,20 @@ export const ASSETS = {
   symbol: (s: CargoSymbol) => `${A}/symbols/${s}.png`,
   gate: { gold: `${A}/gates/gate-gold.png`, purple: `${A}/gates/gate-purple.png`, teal: `${A}/gates/gate-teal.png` } as Record<GateArt, string>,
   fumi: `${A}/mascot/fumi.png`,
+  // The Signal Watch sign with its lettering removed; the title is drawn on top.
+  titlePlank: `${A}/ui/title-plank.png`,
 };
 
 export const FUMI_SRC = ASSETS.fumi;
+
+export const START_CARD_TEXT = "Watch the glowing balls, follow them down the river, then send them through the right gates!";
+
+// Fumi floats in the sky above the river while she talks.
+export const FUMI_PERCH = { x: 195, y: 210 };
+export const PRACTICE_GREETING = "Let's practice first! Watch the glowing balls with me.";
+export const REAL_GAME_GREETING = "Great practice! Now let's play the real game!";
+// How long the fully typed line stays up before Fumi leaves.
+export const GREETING_HOLD_MS = 1300;
 
 // ---------------------------------------------------------------------------
 // Copy

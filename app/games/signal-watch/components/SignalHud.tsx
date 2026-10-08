@@ -3,8 +3,6 @@
 import { HUD_HEIGHT, SAFE_AREA_TOP, THEME_COLOR, TOWERS } from "../config";
 
 type SignalHudProps = {
-  label: string;
-  isPractice: boolean;
   // Route progress: genuine relay activations so far / total real signals.
   activations: number;
   totalActivations: number;
@@ -26,7 +24,7 @@ const chip: React.CSSProperties = {
 
 // The relay route: a line that lights up a little with every real signal
 // the child catches, passing the three tower colours along the way.
-export function SignalHud({ label, isPractice, activations, totalActivations, paused, onTogglePause }: SignalHudProps) {
+export function SignalHud({ activations, totalActivations, paused, onTogglePause }: SignalHudProps) {
   const progress = totalActivations === 0 ? 0 : Math.min(1, activations / totalActivations);
 
   return (
@@ -54,17 +52,15 @@ export function SignalHud({ label, isPractice, activations, totalActivations, pa
         {paused ? "▶" : "⏸"}
       </button>
 
-      <div style={{ ...chip, padding: "7px 10px", color: isPractice ? "#ffd27a" : "#ffffff" }}>{label}</div>
-
       <div
         role="progressbar"
-        aria-label="Relay route"
+        aria-label="Level progress"
         aria-valuemin={0}
         aria-valuemax={totalActivations}
         aria-valuenow={activations}
         style={{ ...chip, flex: 1, minWidth: 0, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}
       >
-        <span style={{ fontSize: 11, opacity: 0.85 }}>Route</span>
+        <span style={{ fontSize: 11, opacity: 0.85 }}>Level</span>
         <div style={{ position: "relative", flex: 1, height: 14 }}>
           <div style={{ position: "absolute", left: 0, right: 0, top: 6, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.18)" }} />
           <div

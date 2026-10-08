@@ -18,16 +18,23 @@ inhibition. Difficulty: medium. Target length: 3.5–4 minutes.
    fade away, and Fumi isn't shown during play. Next, the tutorial labels a two-ring ripple "Ignore", a single flash
    "Ignore", and a three-ring pulse "That's it — tap!". The tutorial waits
    until the child taps that tower.
-3. **How to Play:** Fumi returns with a second typed line ("Now let's play
-   together! Tap a tower only when you see three rings.") and then leaves
-   again. Next come 5 mixed events, unscored, with practice-coaching
-   captions ("Practice: three rings! Tap that tower!", "Practice: not three
-   rings — don't tap it.", and so on).
-4. **Blocks 1–3** (scored): first, Fumi returns once more ("Great
-   practice! Now let's play the real game — watch closely!") and leaves.
-   Then: 10 real signals + 20 decoys each, so 30 + 60
-   in total. The scene never stops; each block opens with a short banner.
-5. **Completion:** stats, stars, 100 XP, coins, the River Stone, the
+3. **The run** (scored): first, Fumi returns once more ("You've got it!
+   Now let's play the real game — tap only the three-ring signal!") and
+   leaves. Then one continuous run of **100 signals: 70 real, 30 decoys**,
+   in shuffled order, one at a time, never twice in a row on the same
+   tower. There are no round labels or breaks.
+
+   | Signals | New signal every | Visible for |
+   |---|---|---|
+   | 1–20 | 1150 ms | 1000 ms |
+   | 21–50 | 900 ms | 750 ms |
+   | 51–75 | 750 ms | 600 ms |
+   | 76–100 | 600 ms | 450 ms |
+
+   Each signal stays up until 150 ms before the next one. Decoys get more
+   target-like as the pace rises. The four speed phases are the "vigilance
+   blocks" reported in `performanceByBlock`. The run itself takes about 86 s.
+4. **Completion:** stats, stars, 100 XP, coins, the River Stone, the
    Hunter Badge (if FIST), and a choice of 1 of 3 accessories.
 
 ## Events
@@ -48,21 +55,18 @@ This overlap is what makes withholding the tap hard.
 
 ## Responses
 
-- **Hit:** tap the tower showing three rings, or within 450 ms after they
+- **Hit:** tap the tower showing three rings, or within 150 ms after they
   vanish. a relay beam fires to the next tower
   (blue → purple → gold → blue), and the route line advances.
 - **False alarm:** tap a decoy, an idle tower, or the wrong tower. A red ✕
   badge appears (matching the green ✓ for a hit), with a short mist puff.
-- **Miss:** the scene doesn't pause. How to Play only shows a gentle hint.
+- **Miss:** the scene doesn't pause.
 
-## Difficulty (`config.ts` → `AGE_BAND_CONFIG`)
+## Difficulty (`config.ts`)
 
-| | 6–10 | 11–16 |
-|---|---|---|
-| Visible time per block (ms) | 1500 / 1300 / 1100 | 1100 / 900 / 750 |
-| Gaps between real signals | 2.5–7 s, shorter early | 2.8–7 s, skewed long |
-| Decoy mix | Mostly obvious decoys; look-alikes rise in block 3 | Look-alike rings from block 1 |
-| Background river motion | Normal | High |
+The pace and counts are the same for both age bands (`SPEED_PHASES`,
+`TOTAL_SIGNALS`, `REAL_SIGNALS`). Ages 11–16 get look-alike decoys earlier
+(`decoyWeightsByPhase`) and a busier river.
 
 ## Metrics (`engine/metrics.ts`, scored blocks only)
 
@@ -105,7 +109,7 @@ signal-watch/
   SignalWatchGame.tsx   Screens, tutorial, continuous stage runner, tap judging, completion
   types.ts / config.ts  Contracts / tunables (blocks, timing, rewards, layout, copy)
   engine/
-    schedule.ts           Builds How to Play + block timelines from a seed; tap lookups
+    schedule.ts           Builds the 3 round (block) timelines from a seed; tap lookups
     metrics.ts            Metrics, stars, FIST, rewards
     rng.ts                Seeded PRNG
   components/

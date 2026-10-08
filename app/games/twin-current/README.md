@@ -9,15 +9,23 @@ rule card names.
 Skills: divided attention, dynamic visual attention, task switching.
 Difficulty: medium → hard. Target length: about 4 minutes.
 
-The game opens straight into How to Play round 1; there is no intro screen.
-The progress bar shows 4 segments during How to Play, then 16 for the
+The game opens on a title screen (wooden "Twin Current" sign, parchment
+instruction card and a green Play button over the river), in the same
+style as Signal Watch. After Play, Fumi appears above the river and types
+"Let's practice first! Watch the glowing balls with me." in a speech
+bubble, then leaves, and How to Play round 1 starts. When How to Play
+ends, she returns with "Great practice! Now let's play the real game!"
+before Round 1/12.
+The progress bar shows 4 segments during How to Play, then 12 for the
 scored rounds.
 The gates stand across the channel heads from the start of every round.
 
 ## How a round plays (the mockup's six steps)
 
-The top bar has only a pause button, the progress bar and a countdown
-chip. There's no visible step text; each step is announced to screen
+The top bar has only a pause button and the progress bar. There's no timer
+anywhere, and no rule card: every round, including How to Play, is a
+plain match, where each ball goes through the gate showing its own symbol.
+The "This one!" tag for missed targets is How to Play only. There's no visible step text; each step is announced to screen
 readers. The 2 glowing balls always start in opposite channels (left and
 right) and stay there. With 3 targets, both channels are always used.
 
@@ -37,9 +45,8 @@ right) and stay there. With 3 targets, both channels are always used.
 4. **Reveal (1.1 s).** Each selected ball turns into its glowing symbol
    badge. Every ball carries a symbol, so a revealed symbol never proves
    the ball was a target.
-5. **Rule (1.5 s).** A white rule pill appears, e.g. "☀ Sun → Left Gate ·
-   ☾ Moon → Right Gate". Later rounds may swap it (Sun → Right Gate),
-   marked NEW RULE.
+5. **(Removed.)** There is no rule step; balls always go to the gate with
+   their own symbol.
 6. **Gates.** The gold and purple stone arches (there all round) stand at
    the heads of the two channels, each with a symbol on its keystone. The child drags each
    selected ball through the gate the rule names (or taps the ball, then
@@ -74,13 +81,12 @@ has no on-screen meter, as in the mockup).
 - **How to Play (both age bands; shown as "How to Play 1/4"…):** 6/2 MATCH, 7/2 MATCH, 8/2 MATCH, 8/2 SWAP
   (balls/targets), with a longer selection window. The last one
   demonstrates a rule change.
-- **16 scored rounds.** Spark count, speed and motion time increase every
-  round.
+- **12 scored rounds, 2 target balls each (24 symbols to identify).**
+  Balls on screen: rounds 1–4: 6, rounds 5–8: 10, rounds 9–12: 12 (both
+  age bands). Speed and motion time still increase every round.
 
 | | 6–10 | 11–16 |
 |---|---|---|
-| Balls | 8 → 12 | 10 → 14 |
-| Targets / gate emblems | 2 / 2 | 2 / 2, then 3 / 3 from round 7 |
 | Speed (px/s) | 60 → 90 | 80 → 125 |
 | Rule switches | 3 | 6 |
 | Crossings | Sparks push apart (fewer close crossings) | Targets steer toward decoys (more crossings) |
@@ -122,11 +128,14 @@ All art is cut from the design mockup and upscaled 4× with Real-ESRGAN:
   pulses where they land. Small clouds drift in the strip of sky at the top
   only.
 - `balls/ball.png`: the default bubble.
+- `ui/title-plank.png`: the Signal Watch title sign with its lettering
+  removed. "Twin Current" is drawn on top in CSS.
+- `mascot/fumi.png`: Fumi with a clean transparent edge.
 - `symbols/`: the 9 symbol badges (sun, moon, leaf, star, drop, heart,
-  bolt, swirl, mountain). Each round uses 2 (or 3) of them.
+  bolt, swirl, mountain). Each round uses 2 of them.
 - `gates/`: the gold and purple arches. The round's symbol badge is drawn
-  over each keystone; a third gate (11–16) is the purple arch, recoloured
-  teal.
+  over each keystone. (`gate-teal.png` is a spare third gate, unused now that
+  every round has 2 targets.)
 
 Balls move only where `engine/waterMap.ts` allows. It's generated from
 `river-mask.png`, with ball centres kept 18 px from any shore.

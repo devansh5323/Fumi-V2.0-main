@@ -14,7 +14,6 @@ import {
   TOWERS,
   TUTORIAL_DEMO_MS,
   TUTORIAL_GREETING,
-  HOW_TO_PLAY_GREETING,
   REAL_GAME_GREETING,
   TUTORIAL_STEPS,
 } from "./config";
@@ -29,7 +28,7 @@ import { completesDay } from "../../lib/dayProgress";
 import { reportGame } from "./lib/sessionReporter";
 
 // start (title sign + Play) -> playing (one
-// continuous scene: tutorial -> practice -> 3 scored blocks) -> complete.
+// continuous scene: tutorial -> Rounds 1–3, scored) -> complete.
 type GameScreen = "start" | "playing" | "complete";
 type PlayPhase = "tutorial" | "stages";
 
@@ -119,7 +118,7 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
   const handleTutorialActivation = useCallback(() => handleActivation(false), [handleActivation]);
   const handleTutorialDone = useCallback(() => {
     setPlayPhase("stages");
-    setGreeting(HOW_TO_PLAY_GREETING);
+    setGreeting(REAL_GAME_GREETING);
   }, []);
 
   const handleStageFinished = useCallback(
@@ -133,9 +132,7 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
         return;
       }
       // No stop between stages — the scene keeps running and the next
-      // stage announces itself with a banner. Leaving How to Play, Fumi
-      // first announces the real game (the next stage waits for her).
-      if (result.isPractice) setGreeting(REAL_GAME_GREETING);
+      // stage announces itself with a banner.
       setStageIndex(next);
     },
     [ageBand, stageIndex, stages.length, runTransition]
@@ -162,8 +159,6 @@ export function SignalWatchGame({ ageBand, seed, onExit }: SignalWatchGameProps)
           greeting === null && <StageRunner key={`${attempt}-${stage.stageIndex}`} stage={stage} paused={paused} onActivation={handleActivation} onFinished={handleStageFinished} />
         )}
         <SignalHud
-          label={playPhase === "tutorial" ? "Tutorial" : stage.label}
-          isPractice={playPhase === "tutorial" || stage.isPractice}
           activations={activations}
           totalActivations={totalRealSignals}
           paused={paused}
@@ -386,7 +381,7 @@ function TutorialRunner({ paused, greeting, onActivation, onDone }: { paused: bo
 }
 
 // ---------------------------------------------------------------------------
-// Practice / scored block — continuous watching
+// A scored round (block) — continuous watching
 // ---------------------------------------------------------------------------
 
 type StageRunnerProps = {
@@ -401,7 +396,6 @@ const BANNER_MS = 2000;
 // Keyed per stage by the parent, so all per-stage state resets by remount.
 function StageRunner({ stage, paused, onActivation, onFinished }: StageRunnerProps) {
   const [activeKey, setActiveKey] = useState("");
-  const [missHint, setMissHint] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
   const { feedbacks, push } = useFeedback();
 
@@ -451,16 +445,13 @@ function StageRunner({ stage, paused, onActivation, onFinished }: StageRunnerPro
             eventId: e.eventId,
             stageIndex: e.stageIndex,
             isPractice: e.isPractice,
+            phase: e.phase,
             tower: e.tower,
             type: e.type,
             durationMs: e.durationMs,
             outcome: isTarget ? "miss" : "correct-rejection",
             reactionMs: null,
           });
-          if (isTarget && e.isPractice) {
-            setMissHint(true);
-            setTimeout(() => setMissHint(false), 1600);
-          }
         }
         resolvePtrRef.current += 1;
       }
@@ -489,6 +480,7 @@ function StageRunner({ stage, paused, onActivation, onFinished }: StageRunnerPro
         eventId: e.eventId,
         stageIndex: e.stageIndex,
         isPractice: e.isPractice,
+            phase: e.phase,
         tower: e.tower,
         type: e.type,
         durationMs: e.durationMs,
@@ -513,14 +505,6 @@ function StageRunner({ stage, paused, onActivation, onFinished }: StageRunnerPro
 
   const active = activeKey ? activeKey.split("|").map((id) => stage.events.find((e) => e.eventId === id)!) : [];
 
-  let caption: string | null = null;
-  if (stage.isPractice) {
-    // How to Play captions: practice coaching.
-    if (missHint) caption = "Practice tip: that was three rings — tap it next time!";
-    else if (active.some((e) => e.type === "three-rings")) caption = "Practice: three rings! Tap that tower!";
-    else if (active.length > 0) caption = "Practice: not three rings — don't tap it.";
-    else caption = "Practice round — watch all three towers…";
-  }
 
   return (
     <>
@@ -531,12 +515,12 @@ function StageRunner({ stage, paused, onActivation, onFinished }: StageRunnerPro
       </EffectsLayer>
       <TowerButtons onTap={handleTap} />
       <FeedbackLayer feedbacks={feedbacks} />
-      {showBanner && (
+      {showBanner && stage.banner && (
         <div style={bannerRowStyle}>
           <div style={bannerStyle}>{stage.banner}</div>
         </div>
       )}
-      <Caption text={showBanner ? null : caption} />
+      
     </>
   );
 }

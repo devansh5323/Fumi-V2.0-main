@@ -1,5 +1,5 @@
 import type { AgeBand, CargoSymbol, RoundPlan, RouteRule, SparkPlan } from "../types";
-import { AGE_BAND_CONFIG, ALL_SYMBOLS, PRACTICE_ROUNDS, SCORED_ROUNDS, speedTierFor } from "../config";
+import { AGE_BAND_CONFIG, ALL_SYMBOLS, PRACTICE_ROUNDS, SCORED_ROUNDS, TARGETS_PER_ROUND, ballsForRound, speedTierFor } from "../config";
 import { createRng, randInt, shuffle, type Rng } from "./rng";
 import { sampleStartPositions, simulateMotion } from "./motion";
 
@@ -114,8 +114,8 @@ export function buildSession(ageBand: AgeBand, sessionSeed: string): RoundPlan[]
     ...Array.from({ length: SCORED_ROUNDS }, (_, i) => ({
       isPractice: false,
       label: `Round ${i + 1}/${SCORED_ROUNDS}`,
-      sparkCount: rampInt(cfg.sparkCountRange[0], cfg.sparkCountRange[1], i, SCORED_ROUNDS),
-      targetCount: cfg.threeTargetsFromRound !== null && i >= cfg.threeTargetsFromRound ? 3 : 2,
+      sparkCount: ballsForRound(i),
+      targetCount: TARGETS_PER_ROUND,
       rule: scoredRules[i],
       speedPxPerSec: rampInt(cfg.speedRange[0], cfg.speedRange[1], i, SCORED_ROUNDS),
       motionMs: rampInt(cfg.motionMsRange[0], cfg.motionMsRange[1], i, SCORED_ROUNDS),

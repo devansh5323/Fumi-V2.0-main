@@ -4,63 +4,55 @@ import type { AgeBand, DecoyType, SignalType, TowerDef, TowerTheme } from "./typ
 // Session shape
 // ---------------------------------------------------------------------------
 
-// 3 scored vigilance blocks x (10 real signals + 20 decoys) = 30 real
-// signals + 60 scored decoys. Real-signal onsets are jittered within
-// `targetGapMs`; decoys fill the time between them.
-export const BLOCK_COUNT = 3;
-export const TARGETS_PER_BLOCK = 10;
-export const DECOYS_PER_BLOCK = 20;
+// One continuous run of 100 signals: 70 real three-ring signals and 30
+// decoys, in a shuffled order. Signals appear one at a time on a tower
+// (never the same tower twice in a row), and speed up in four phases.
+export const TOTAL_SIGNALS = 100;
+export const REAL_SIGNALS = 70;
+export const DECOY_SIGNALS = TOTAL_SIGNALS - REAL_SIGNALS;
 
-export type BlockSpec = {
-  visibleMs: number; // how long every event (real or decoy) stays on screen
-  targetGapMs: [number, number]; // onset-to-onset between real signals
-  // Gap skew: <1 leans toward long gaps, >1 toward short gaps.
-  gapSkew: number;
-  decoyWeights: Record<DecoyType, number>;
+// Each signal stays visible until this long before the next one appears.
+export const SIGNAL_GAP_MS = 150;
+
+export type SpeedPhase = {
+  firstSignal: number; // 1-based, inclusive
+  lastSignal: number;
+  intervalMs: number; // onset-to-onset: a new signal every intervalMs
 };
 
-// Block 1 leans on obviously-different decoys; later blocks lean on
-// one/two-ring pulses, which look most like the real signal.
+export const SPEED_PHASES: SpeedPhase[] = [
+  { firstSignal: 1, lastSignal: 20, intervalMs: 1150 },
+  { firstSignal: 21, lastSignal: 50, intervalMs: 900 },
+  { firstSignal: 51, lastSignal: 75, intervalMs: 750 },
+  { firstSignal: 76, lastSignal: 100, intervalMs: 600 },
+];
+
+// Decoys get more target-like as the run speeds up: early phases lean on
+// obviously different decoys, later ones on one/two-ring pulses.
 const EASY: Record<DecoyType, number> = { "two-rings": 1, "one-ring": 2, sunlight: 3, bubbles: 3, "fish-splash": 3, leaves: 3, "blue-spark": 2 };
 const MID: Record<DecoyType, number> = { "two-rings": 3, "one-ring": 3, sunlight: 2, bubbles: 2, "fish-splash": 2, leaves: 2, "blue-spark": 2 };
 const HARD: Record<DecoyType, number> = { "two-rings": 6, "one-ring": 4, sunlight: 1, bubbles: 1, "fish-splash": 1, leaves: 1, "blue-spark": 2 };
 
 export type AgeBandConfig = {
-  blocks: BlockSpec[];
+  // Decoy mix for each speed phase (same order as SPEED_PHASES).
+  decoyWeightsByPhase: Record<DecoyType, number>[];
   // Unscored background motion (fish, leaves, bubbles, ripples).
   riverActivity: "normal" | "high";
 };
 
 export const AGE_BAND_CONFIG: Record<AgeBand, AgeBandConfig> = {
-  // Longer visibility, fewer near-target decoys, shorter gaps early.
-  "6-10": {
-    riverActivity: "normal",
-    blocks: [
-      { visibleMs: 1500, targetGapMs: [2500, 6500], gapSkew: 1.3, decoyWeights: EASY },
-      { visibleMs: 1300, targetGapMs: [2500, 7000], gapSkew: 0.95, decoyWeights: EASY },
-      { visibleMs: 1100, targetGapMs: [2500, 7000], gapSkew: 0.85, decoyWeights: MID },
-    ],
-  },
-  // Shorter visibility, more two-ring decoys, longer unpredictable gaps,
-  // busier river.
-  "11-16": {
-    riverActivity: "high",
-    blocks: [
-      { visibleMs: 1100, targetGapMs: [2800, 7000], gapSkew: 0.8, decoyWeights: MID },
-      { visibleMs: 900, targetGapMs: [2800, 7000], gapSkew: 0.7, decoyWeights: HARD },
-      { visibleMs: 750, targetGapMs: [2800, 7000], gapSkew: 0.7, decoyWeights: HARD },
-    ],
-  },
+  "6-10": { riverActivity: "normal", decoyWeightsByPhase: [EASY, EASY, MID, MID] },
+  "11-16": { riverActivity: "high", decoyWeightsByPhase: [MID, HARD, HARD, HARD] },
 };
 
-export const MIN_EVENT_SPACING_MS = 450; // quiet time between any two events
-export const STAGE_LEAD_IN_MS = 2200; // banner time at the start of a stage
+export const STAGE_LEAD_IN_MS = 1500; // quiet moment before signal 1
 export const STAGE_TAIL_MS = 1200;
 
-// A tap shortly after a signal disappears still counts for that signal.
-export const RESPONSE_GRACE_MS = 450;
+// A tap shortly after a signal disappears still counts for that signal
+// (kept short so it never reaches into the next signal at top speed).
+export const RESPONSE_GRACE_MS = 150;
 
-// Tutorial: Fumi labels three examples before practice.
+// Tutorial: Fumi labels three examples before the real game.
 export type TutorialStep = { type: SignalType; tower: number; label: string; caption: string; waitForTap: boolean };
 export const TUTORIAL_STEPS: TutorialStep[] = [
   { type: "two-rings", tower: 0, label: "Ignore", caption: "See this ripple? It's a decoy — ignore it.", waitForTap: false },
@@ -69,16 +61,6 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
 ];
 export const TUTORIAL_DEMO_MS = 2800;
 
-// 5 mixed practice events (unscored), shown after the tutorial.
-export const PRACTICE_EVENTS: { type: SignalType; tower: number }[] = [
-  { type: "one-ring", tower: 1 },
-  { type: "three-rings", tower: 2 },
-  { type: "bubbles", tower: 0 },
-  { type: "two-rings", tower: 2 },
-  { type: "three-rings", tower: 0 },
-];
-export const PRACTICE_VISIBLE_MS = 1700;
-export const PRACTICE_GAP_MS: [number, number] = [1400, 2200];
 
 // ---------------------------------------------------------------------------
 // Rewards
@@ -137,10 +119,8 @@ export const FUMI_PERCH = { x: 195, y: 262 };
 
 // What Fumi says when Play is tapped, before the tutorial starts.
 export const TUTORIAL_GREETING = "Let's learn how to spot the real signal — watch the towers with me!";
-// What Fumi says before the "How to Play" round (5 unscored signals).
-export const HOW_TO_PLAY_GREETING = "Now let's play together! Tap a tower only when you see three rings.";
-// What Fumi says after How to Play, before the scored game begins.
-export const REAL_GAME_GREETING = "Great practice! Now let's play the real game — watch closely!";
+// What Fumi says after the tutorial, as the real game begins.
+export const REAL_GAME_GREETING = "You've got it! Now let's play the real game — tap only the three-ring signal!";
 // How long the fully typed greeting stays up before Fumi leaves.
 export const GREETING_HOLD_MS = 1300;
 

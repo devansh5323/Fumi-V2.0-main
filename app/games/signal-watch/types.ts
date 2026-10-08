@@ -31,6 +31,7 @@ export type SignalEvent = {
   eventId: string;
   stageIndex: number;
   isPractice: boolean;
+  phase: number; // speed phase 1–4 (1150 / 900 / 750 / 600 ms between signals)
   tower: number;
   type: SignalType;
   startMs: number; // from stage start
@@ -44,7 +45,7 @@ export type StagePlan = {
   stageIndex: number;
   isPractice: boolean;
   blockNumber: number | null; // 1-based for scored blocks
-  label: string; // "Practice" | "Block 1/3"
+  label: string; // "Round 1/3"
   banner: string;
   events: SignalEvent[];
   totalMs: number;
@@ -56,6 +57,7 @@ export type SignalResult = {
   eventId: string;
   stageIndex: number;
   isPractice: boolean;
+  phase: number;
   tower: number;
   type: SignalType;
   durationMs: number;
@@ -75,8 +77,10 @@ export type StageResult = {
   strayTaps: StrayTap[];
 };
 
+// Performance per vigilance block — here, per speed phase of the run.
 export type BlockPerformance = {
-  block: number;
+  block: number; // speed phase 1–4
+  intervalMs: number;
   realSignals: number;
   detected: number;
   detectionAccuracyPct: number;

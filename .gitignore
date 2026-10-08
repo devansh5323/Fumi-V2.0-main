@@ -43,3 +43,6 @@ next-env.d.ts
 # stray reference asset at project root (unused duplicate of
 # public/backgrounds/forest-path.png)
 /Background.png
+
+# locally collected game results (see /api/results)
+/data/

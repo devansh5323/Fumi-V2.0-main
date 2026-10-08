@@ -1,25 +1,6 @@
-import type { AgeBand, DecoyType, SignalEvent, StagePlan } from "../types";
-import {
-  AGE_BAND_CONFIG,
-  BLOCK_COUNT,
-  DECOYS_PER_BLOCK,
-  MIN_EVENT_SPACING_MS,
-  PRACTICE_EVENTS,
-  PRACTICE_GAP_MS,
-  PRACTICE_VISIBLE_MS,
-  STAGE_LEAD_IN_MS,
-  STAGE_TAIL_MS,
-  TARGETS_PER_BLOCK,
-  TOWERS,
-  type BlockSpec,
-} from "../config";
-import { createRng, randInt, randRange, type Rng } from "./rng";
-
-// At most this many events on screen at once (always on different towers).
-const MAX_CONCURRENT = 2;
-// Decoys never start this close to a real signal's onset, so the real
-// signal is never masked by a simultaneous pop elsewhere.
-const TARGET_ONSET_CLEARANCE_MS = 350;
+import type { AgeBand, DecoyType, SignalEvent, SignalType, StagePlan } from "../types";
+import { AGE_BAND_CONFIG, REAL_SIGNALS, SIGNAL_GAP_MS, SPEED_PHASES, STAGE_LEAD_IN_MS, STAGE_TAIL_MS, TOTAL_SIGNALS, TOWERS } from "../config";
+import { createRng, randInt, shuffle, type Rng } from "./rng";
 
 function pickWeighted(weights: Record<DecoyType, number>, rng: Rng): DecoyType {
   const entries = Object.entries(weights) as [DecoyType, number][];
@@ -32,103 +13,78 @@ function pickWeighted(weights: Record<DecoyType, number>, rng: Rng): DecoyType {
   return entries[entries.length - 1][0];
 }
 
-function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
-  return aStart < bEnd && bStart < aEnd;
+// 1-based speed phase for 1-based signal number n.
+export function phaseOf(n: number): number {
+  return SPEED_PHASES.findIndex((p) => n >= p.firstSignal && n <= p.lastSignal) + 1;
 }
 
-function buildPractice(): StagePlan {
-  const rng = createRng("practice");
-  let t = STAGE_LEAD_IN_MS;
-  const events: SignalEvent[] = PRACTICE_EVENTS.map((e, i) => {
-    const startMs = Math.round(t + (i === 0 ? 0 : randRange(rng, PRACTICE_GAP_MS)));
-    t = startMs + PRACTICE_VISIBLE_MS;
-    return { eventId: `p-e${i}`, stageIndex: 0, isPractice: true, tower: e.tower, type: e.type, startMs, durationMs: PRACTICE_VISIBLE_MS };
-  });
-  return { stageIndex: 0, isPractice: true, blockNumber: null, label: "How to Play", banner: "How to Play — practice 5 signals", events, totalMs: t + STAGE_TAIL_MS };
-}
-
-function buildBlock(stageIndex: number, blockNumber: number, spec: BlockSpec, sessionSeed: string): StagePlan {
-  const rng = createRng(`${sessionSeed}-block${blockNumber}`);
-  const d = spec.visibleMs;
-  const events: SignalEvent[] = [];
-
-  // Real signals: onset-to-onset gaps jittered within targetGapMs.
-  let onset = STAGE_LEAD_IN_MS;
-  let lastTower = -1;
-  for (let k = 0; k < TARGETS_PER_BLOCK; k++) {
-    const u = Math.pow(rng(), spec.gapSkew);
-    const gap = spec.targetGapMs[0] + (spec.targetGapMs[1] - spec.targetGapMs[0]) * u;
-    onset += k === 0 ? gap * 0.6 : gap;
-    let tower = randInt(rng, TOWERS.length);
-    if (tower === lastTower && rng() < 0.6) tower = (tower + 1 + randInt(rng, TOWERS.length - 1)) % TOWERS.length;
-    lastTower = tower;
-    events.push({ eventId: `b${blockNumber}-t${k}`, stageIndex, isPractice: false, tower, type: "three-rings", startMs: Math.round(onset), durationMs: d });
-  }
-  const targetOnsets = events.map((e) => e.startMs);
-  let blockEnd = events[events.length - 1].startMs + d + STAGE_TAIL_MS;
-
-  // Decoys: random slots anywhere in the block, subject to tower spacing,
-  // concurrency and target-onset clearance. If a block is too crowded, it
-  // grows a little at the end rather than dropping decoys.
-  let lastDecoy: DecoyType | null = null;
-  for (let k = 0; k < DECOYS_PER_BLOCK; k++) {
-    let placed = false;
-    for (let attempt = 0; attempt < 400 && !placed; attempt++) {
-      const start = Math.round(randRange(rng, [STAGE_LEAD_IN_MS, blockEnd - STAGE_TAIL_MS]));
-      const end = start + d;
-      const tower = randInt(rng, TOWERS.length);
-      if (targetOnsets.some((t) => Math.abs(t - start) < TARGET_ONSET_CLEARANCE_MS)) continue;
-      const towerBusy = events.some((e) => e.tower === tower && overlaps(start - MIN_EVENT_SPACING_MS, end + MIN_EVENT_SPACING_MS, e.startMs, e.startMs + e.durationMs));
-      if (towerBusy) continue;
-      const concurrent = events.filter((e) => overlaps(start, end, e.startMs, e.startMs + e.durationMs)).length;
-      if (concurrent >= MAX_CONCURRENT) continue;
-      let type = pickWeighted(spec.decoyWeights, rng);
-      if (type === lastDecoy) type = pickWeighted(spec.decoyWeights, rng);
-      lastDecoy = type;
-      events.push({ eventId: `b${blockNumber}-d${k}`, stageIndex, isPractice: false, tower, type, startMs: start, durationMs: d });
-      placed = true;
-    }
-    if (!placed) {
-      blockEnd += d + MIN_EVENT_SPACING_MS;
-      k--;
-    }
-  }
-
-  events.sort((a, b) => a.startMs - b.startMs);
-  const lastEnd = Math.max(...events.map((e) => e.startMs + e.durationMs));
-  return {
-    stageIndex,
-    isPractice: false,
-    blockNumber,
-    label: `Block ${blockNumber}/${BLOCK_COUNT}`,
-    banner: blockNumber === 1 ? "Block 1 — now it counts!" : `Block ${blockNumber} of ${BLOCK_COUNT}`,
-    events,
-    totalMs: lastEnd + STAGE_TAIL_MS,
-  };
-}
-
-// Practice (5 fixed events) then the scored vigilance blocks.
+// The whole game as one continuous run: 100 signals (70 real, 30 decoys) in
+// a shuffled order, one at a time, never twice in a row on the same tower,
+// each visible until SIGNAL_GAP_MS before the next. The pace follows
+// SPEED_PHASES (1150 → 900 → 750 → 600 ms between signals).
 export function buildSession(ageBand: AgeBand, sessionSeed: string): StagePlan[] {
   const cfg = AGE_BAND_CONFIG[ageBand];
-  return [buildPractice(), ...cfg.blocks.map((spec, i) => buildBlock(i + 1, i + 1, spec, sessionSeed))];
+  const rng = createRng(`${sessionSeed}-run`);
+  const isReal = shuffle(
+    Array.from({ length: TOTAL_SIGNALS }, (_, i) => i < REAL_SIGNALS),
+    rng
+  );
+
+  const events: SignalEvent[] = [];
+  let t = STAGE_LEAD_IN_MS;
+  let lastTower = -1;
+  let lastDecoy: DecoyType | null = null;
+  for (let i = 0; i < TOTAL_SIGNALS; i++) {
+    const n = i + 1;
+    const phase = phaseOf(n);
+    const interval = SPEED_PHASES[phase - 1].intervalMs;
+    let tower = randInt(rng, TOWERS.length);
+    if (tower === lastTower) tower = (tower + 1 + randInt(rng, TOWERS.length - 1)) % TOWERS.length;
+    lastTower = tower;
+    let type: SignalType = "three-rings";
+    if (!isReal[i]) {
+      let d = pickWeighted(cfg.decoyWeightsByPhase[phase - 1], rng);
+      if (d === lastDecoy) d = pickWeighted(cfg.decoyWeightsByPhase[phase - 1], rng);
+      lastDecoy = d;
+      type = d;
+    }
+    events.push({ eventId: `s${n}`, stageIndex: 0, isPractice: false, phase, tower, type, startMs: t, durationMs: interval - SIGNAL_GAP_MS });
+    t += interval;
+  }
+
+  const lastEnd = events[events.length - 1].startMs + events[events.length - 1].durationMs;
+  return [
+    {
+      stageIndex: 0,
+      isPractice: false,
+      blockNumber: 1,
+      label: "",
+      banner: "",
+      events,
+      totalMs: lastEnd + STAGE_TAIL_MS,
+    },
+  ];
 }
 
-// The event a tap on `tower` at `atMs` should be judged against: the one
-// showing on that tower, or one that ended there within `graceMs`. Events on
-// one tower are always spaced wider than the grace, so there's at most one.
+
+
+// The event a tap on `tower` at `atMs` should be judged against: the latest
+// one shown on that tower that's still on screen or within `graceMs`.
 export function eventOnTower(events: SignalEvent[], tower: number, atMs: number, graceMs: number): SignalEvent | null {
+  let found: SignalEvent | null = null;
   for (const e of events) {
-    if (e.tower === tower && atMs >= e.startMs && atMs < e.startMs + e.durationMs + graceMs) return e;
     if (e.startMs > atMs) break;
+    if (e.tower === tower && atMs < e.startMs + e.durationMs + graceMs) found = e;
   }
-  return null;
+  return found;
 }
 
 // A real signal currently live (or within grace) on any tower.
 export function liveTarget(events: SignalEvent[], atMs: number, graceMs: number): SignalEvent | null {
+  let found: SignalEvent | null = null;
   for (const e of events) {
-    if (e.type === "three-rings" && atMs >= e.startMs && atMs < e.startMs + e.durationMs + graceMs) return e;
     if (e.startMs > atMs) break;
+    if (e.type === "three-rings" && atMs < e.startMs + e.durationMs + graceMs) found = e;
   }
-  return null;
+  return found;
 }

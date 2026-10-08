@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgeBand, CargoSymbol, GameOutcome, PickRecord, Point, RoundPlan, RoundResult } from "./types";
 import {
   DEFAULT_QUEST,
+  PRACTICE_GREETING,
+  REAL_GAME_GREETING,
   PLAY_AREA,
   REWARDS,
   SPARK_RADIUS,
@@ -20,21 +22,22 @@ import { computeGameOutcome } from "./engine/metrics";
 import { RiverBackdrop } from "./components/RiverBackdrop";
 import { EnergySpark, type SparkLook } from "./components/EnergySpark";
 import { RiverGate, type GateState } from "./components/RiverGate";
-import { RuleCard } from "./components/RuleCard";
 import { StepHeader } from "./components/StepHeader";
+import { StartScreen } from "./components/StartScreen";
+import { FumiGuide } from "./components/FumiGuide";
 import { Fumi } from "../../components/Fumi";
 import { completesDay } from "../../lib/dayProgress";
 import { reportGame } from "./lib/sessionReporter";
 
 // intro (quest + narration) -> playing (4 practice + 16 scored rounds,
 // back-to-back) -> complete (stats, rewards, accessory pick).
-type GameScreen = "playing" | "complete";
+type GameScreen = "start" | "playing" | "complete";
 
 // One round (the mockup's steps): 1 targets glow -> 2 everything flows ->
 // 3 the child selects the balls they tracked -> 4 symbols revealed ->
 // 5 rule card -> 6 drag each ball through its gate -> missed targets
 // briefly re-light -> the stream surges into the next round.
-type RoundPhase = "preview" | "fade" | "motion" | "select" | "reveal" | "rule" | "route" | "result" | "flow";
+type RoundPhase = "preview" | "fade" | "motion" | "select" | "reveal" | "route" | "result" | "flow";
 
 function generateSeed(): string {
   return `tc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -51,8 +54,11 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
   const [attempt, setAttempt] = useState(0);
   const rounds = useMemo(() => buildSession(ageBand, `${sessionSeed}-a${attempt}`), [ageBand, sessionSeed, attempt]);
 
-  // No intro screen — the game opens straight into the practice rounds.
-  const [screen, setScreen] = useState<GameScreen>("playing");
+  // Title screen first; Play leads into How to Play (practice).
+  const [screen, setScreen] = useState<GameScreen>("start");
+  // Fumi's typed line in a speech bubble (before practice, and before the
+  // real game). Rounds wait while she talks. null = Fumi not shown.
+  const [greeting, setGreeting] = useState<string | null>(null);
   const [roundIndex, setRoundIndex] = useState(0);
   const [scoredDone, setScoredDone] = useState(0);
   const [practiceDone, setPracticeDone] = useState(0);
@@ -68,10 +74,6 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
   const energyRef = useRef(START_ENERGY);
 
   const round = rounds[roundIndex];
-
-  useEffect(() => {
-    startedAtRef.current = Date.now();
-  }, []);
 
   // Dip to dark, swap content while covered, optionally hold a short label.
   const runTransition = useCallback((action: () => void, message: string | null = null) => {
@@ -95,8 +97,11 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
     runTransition(() => {
       startedAtRef.current = Date.now();
       setScreen("playing");
+      setGreeting(PRACTICE_GREETING);
     });
   }, [runTransition]);
+
+  const handleGreetingDone = useCallback(() => setGreeting(null), []);
 
   const handlePlayAgain = useCallback(() => {
     setAttempt((a) => a + 1);
@@ -131,10 +136,10 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
       }
       const leavingPractice = rounds[roundIndex].isPractice && !rounds[next].isPractice;
       if (leavingPractice) {
-        runTransition(() => {
-          setRoundPhase("preview");
-          setRoundIndex(next);
-        }, "How to Play done — now it counts!");
+        // Fumi announces the real game; Round 1 starts when she's done.
+        setGreeting(REAL_GAME_GREETING);
+        setRoundPhase("preview");
+        setRoundIndex(next);
       } else {
         setRoundPhase("preview");
         setRoundIndex(next);
@@ -149,11 +154,14 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
   }, [onExit]);
 
   let content: React.ReactNode = null;
-  if (screen === "playing" && round) {
+  if (screen === "start") {
+    content = <StartScreen onPlay={startRun} />;
+  } else if (screen === "playing" && round) {
     content = (
       <>
         <RiverBackdrop surge={roundPhase === "flow"} />
-        <RoundRunner
+        {greeting && <FumiGuide key={greeting} speech={greeting} onDone={handleGreetingDone} />}
+        {greeting === null && <RoundRunner
           key={`${attempt}-${round.roundIndex}`}
           round={round}
           paused={paused}
@@ -163,7 +171,7 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
           onPhaseChange={setRoundPhase}
           onEnergyCost={handleEnergyCost}
           onFinished={handleRoundFinished}
-        />
+        />}
         {paused && <PauseOverlay onResume={togglePause} onExit={handleExit} />}
       </>
     );
@@ -215,8 +223,6 @@ function phaseDuration(phase: RoundPhase): number | null {
       return TIMING.fadeMs;
     case "reveal":
       return TIMING.revealMs;
-    case "rule":
-      return TIMING.ruleMs;
     case "result":
       return TIMING.resultMs;
     case "flow":
@@ -226,7 +232,9 @@ function phaseDuration(phase: RoundPhase): number | null {
   }
 }
 
-const NEXT_PHASE: Partial<Record<RoundPhase, RoundPhase>> = { preview: "fade", fade: "motion", reveal: "rule", rule: "route", result: "flow" };
+// No rule step: after the reveal, the balls go straight to the gates
+// (each to the gate showing its own symbol).
+const NEXT_PHASE: Partial<Record<RoundPhase, RoundPhase>> = { preview: "fade", fade: "motion", reveal: "route", result: "flow" };
 
 function positionName(index: number, count: number): string {
   if (index === 0) return "Left";
@@ -242,7 +250,6 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
   const gates = useMemo(() => gateRects(round.gateOrder.length), [round.gateOrder.length]);
 
   const [phase, setPhaseState] = useState<RoundPhase>("preview");
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(Math.ceil(TIMING.previewMs / 1000));
   const [restPositions, setRestPositions] = useState<Point[]>(() => track.frames[0]);
   const [selected, setSelected] = useState<string[]>([]);
   const [routed, setRouted] = useState<Record<string, Routed>>({});
@@ -274,15 +281,13 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
       phaseElapsedRef.current = 0;
       setPhaseState(p);
       onPhaseChange(p);
-      const d = phaseDuration(p);
-      setSecondsLeft(p === "preview" && d ? Math.ceil(d / 1000) : p === "motion" ? Math.ceil(round.motionMs / 1000) : p === "select" ? Math.ceil(round.selectMs / 1000) : null);
       if (p === "select") {
         selectStartRef.current = performance.now();
         lastSelectAtRef.current = selectStartRef.current;
       }
-      if (p === "rule") ruleStartRef.current = performance.now();
+      if (p === "route") ruleStartRef.current = performance.now();
     },
-    [onPhaseChange, round.motionMs, round.selectMs]
+    [onPhaseChange]
   );
 
   const buildResult = useCallback((): RoundResult => {
@@ -318,7 +323,6 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
       const now = performance.now();
       phaseElapsedRef.current += now - last;
       last = now;
-      if (phase === "preview") setSecondsLeft(Math.max(1, Math.ceil((d - phaseElapsedRef.current) / 1000)));
       if (phaseElapsedRef.current >= d) {
         clearInterval(id);
         if (phase === "flow") onFinished(buildResult());
@@ -339,7 +343,6 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
     let raf = 0;
     let last = performance.now();
     let prev = sampleTrack(track, motionElapsedRef.current);
-    let lastChip = -1;
     const total = round.motionMs + round.selectMs;
     const tick = (now: number) => {
       const dt = Math.max(1, now - last);
@@ -367,17 +370,10 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
         setPhase("select");
         return; // the effect restarts for the select phase
       }
-      const left = inSelect ? total - motionElapsedRef.current : round.motionMs - motionElapsedRef.current;
-      const chip = Math.max(1, Math.ceil(left / 1000));
-      if (chip !== lastChip) {
-        lastChip = chip;
-        setSecondsLeft(chip);
-      }
       if (motionElapsedRef.current >= total) {
         tailEls.current.forEach((t) => t && (t.style.opacity = "0"));
         setRestPositions(track.frames[track.frames.length - 1]);
         setFlowEnded(true);
-        setSecondsLeft(null);
         return;
       }
       raf = requestAnimationFrame(tick);
@@ -552,7 +548,6 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
   const found = selected.filter((id) => round.sparks.find((s) => s.sparkId === id)?.isTarget).length;
   // The gates stand across the channel heads for the whole round.
   const gatesVisible = true;
-  const ruleVisible = phase === "rule" || phase === "route" || phase === "result";
 
   // The step card (mockup steps 1–6).
   let step = 1;
@@ -578,16 +573,12 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
         : found === 0
           ? `Not quite — the glowing ${n === 1 ? "ball was" : "balls were"} ours.`
           : `${wrong === 1 ? "One ball wasn't" : `${wrong} balls weren't`} ours — the glowing one was.`;
-  } else if (phase === "rule") {
-    step = 5;
-    title = "Follow the rule";
-    subtitle = round.ruleChanged ? "The rule changed — read it carefully!" : "A rule appears on the screen.";
   } else if (phase === "route") {
-    step = 6;
-    title = "Send the balls through the correct gates";
-    subtitle = round.isPractice && round.roundIndex === 0 ? "Drag each glowing ball into the gate the rule shows." : "Guide each ball through the right gate.";
+    step = 5;
+    title = "Send the balls through the matching gates";
+    subtitle = "Drag each ball into the gate with the same symbol.";
   } else if (phase === "result" || phase === "flow") {
-    step = 6;
+    step = 5;
     title = found === n ? `All ${n} balls found!` : `You found ${found} of ${n}`;
     subtitle = found === n ? "Great tracking — the gates are open." : "The glowing ones were the balls to follow.";
   }
@@ -624,7 +615,7 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
           const dragging = drag?.sparkId === spark.sparkId && drag.moved;
           const pos = dragging ? { x: drag.x + drag.offsetX, y: drag.y + drag.offsetY } : sparkPos(spark.sparkId, i);
           const isSel = selected.includes(spark.sparkId);
-          const afterSelect = phase === "reveal" || phase === "rule" || phase === "route" || phase === "result" || phase === "flow";
+          const afterSelect = phase === "reveal" || phase === "route" || phase === "result" || phase === "flow";
           let look: SparkLook = "idle";
           if (phase === "preview" && spark.isTarget) look = "preview";
           else if (phase === "select" && isSel) look = "picked";
@@ -658,7 +649,7 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
                 onPointerUp={handlePointerUp(spark.sparkId)}
                 onPointerCancel={() => setDrag(null)}
               />
-              {showMissed && phase === "reveal" && (
+              {showMissed && phase === "reveal" && round.isPractice && (
                 <div
                   aria-hidden
                   style={{
@@ -684,13 +675,11 @@ function RoundRunner({ round, paused, scoredRoundsDone, practiceRoundsDone, onTo
         })}
       </div>
 
-      <RuleCard rule={round.rule} categories={round.categories} gateOrder={round.gateOrder} visible={ruleVisible} changed={round.ruleChanged} />
 
       <StepHeader
         step={step}
         title={title}
         subtitle={subtitle}
-        secondsLeft={phase === "preview" || phase === "motion" || phase === "fade" || (phase === "select" && !flowEnded) ? secondsLeft : null}
         paused={paused}
         onTogglePause={onTogglePause}
         isPractice={round.isPractice}

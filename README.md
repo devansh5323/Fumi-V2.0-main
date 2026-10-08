@@ -86,6 +86,35 @@ This keeps every game independently reviewable, deletable, and handoff-able
 — a new team member (or a different team entirely) should be able to open
 one game's folder and understand it without reading any other game's code.
 
+## Game results backend (local)
+
+Signal Watch and Twin Current send every completed session to a small
+local backend built into the app (Next.js route handlers in
+`app/api/results/`). The data is stored on disk as one JSON line per
+session:
+
+```
+data/game-results/signal-watch.jsonl
+data/game-results/twin-current.jsonl
+```
+
+`data/` is git-ignored. A session is saved when the child taps
+**Claim Rewards** on the results screen. The games also keep a
+`localStorage` copy as a fallback.
+
+With `pnpm dev` running, engineers can pull the data from:
+
+| URL | What you get |
+|---|---|
+| `/api/results` | Which games have data, session counts, links |
+| `/api/results/<game>` | All sessions, full JSON (every metric plus per-trial data) |
+| `/api/results/<game>?format=csv` | One row per session: every summary metric, flattened (`metrics.detectionAccuracyPct`, `metrics.performanceByBlock.0.detected`, …) |
+| `/api/results/<game>?format=csv&level=trials` | One row per trial: each signal (Signal Watch) or each scored round (Twin Current) |
+
+`<game>` is `signal-watch` or `twin-current`. Sessions are written with a
+`sessionId` (UUID) and a `receivedAt` timestamp. To reset the data, delete
+the `.jsonl` files.
+
 ## Deployment
 
 Deployed on Vercel. Pushing to `main` can be wired up for auto-deploy once
