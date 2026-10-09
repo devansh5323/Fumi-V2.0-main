@@ -34,8 +34,8 @@ export const ROUNDS: RoundSpec[] = [
   },
 ];
 
-// From the sheet's "Instruction" note — shown before every round.
-export const INSTRUCTION = "Find the hidden words in the grid to clear the mine track";
+// Shown by Fumi on the title screen.
+export const HOW_TO_PLAY = ["Find the hidden words in the grid to clear the mine track.", "Words can run across, down, or diagonally."];
 // From the sheet: "At the end of every round Fumi can come say — Track Cleared!"
 export const ROUND_END_LINE = "Track Cleared!";
 // What Fumi says after each round.

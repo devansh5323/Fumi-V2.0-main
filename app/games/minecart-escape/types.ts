@@ -77,6 +77,8 @@ export type GameRewards = {
 };
 
 export type GameOutcome = {
+  gameId: string; // one per game played; the stored copy is updated after every round
+  status: "in-progress" | "completed" | "out-of-lives";
   ageBand: AgeBand;
   rounds: RoundResult[]; // every attempt, in play order
   completed: boolean; // all 3 rounds cleared (false = ran out of lives)

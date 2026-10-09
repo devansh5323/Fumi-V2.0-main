@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgeBand, Cell, GameOutcome, RoundResult, RoundSpec } from "./types";
 import {
   ASSETS,
-  INSTRUCTION,
+  HOW_TO_PLAY,
   LIVES,
   LOADING_MS,
   OUT_OF_LIVES_LINE,
@@ -22,7 +22,7 @@ import { generatePuzzle, matchWord, shuffledColors } from "./engine/wordsearch";
 import { computeGameOutcome } from "./engine/metrics";
 import { WordGrid, type FoundMark, type SelectOutcome } from "./components/WordGrid";
 import { FumiCart, INK, MiniCart, MineBackdrop, Plank, TEXT_DISPLAY, WoodFramePanel, playButtonStyle, secondaryButtonStyle } from "./components/MineArt";
-import { recordAccessory, reportGame } from "./lib/sessionReporter";
+import { recordAccessory, reportGame, saveProgress } from "./lib/sessionReporter";
 
 // start -> intro (Fumi + instruction) -> [loading -> play (timer runs only
 // here) -> round end: Fumi says "You found X words!" + "Track Cleared!"
@@ -82,15 +82,16 @@ export function MinecartEscapeGame({ ageBand, seed, onExit }: MinecartEscapeGame
       const all = [...attempts, r];
       setAttempts(all);
       setLives(livesAfter);
-      // Save as soon as the game is over — not only on "Claim Rewards".
+      // Saved to localStorage after every round; sent to the backend when
+      // the game is over (not only on "Claim Rewards").
+      const o = computeGameOutcome(`${sessionSeed}-g${game}`, ageBand, all, livesAfter, next.kind === "final");
       if (next.kind === "final") {
-        const o = computeGameOutcome(ageBand, all, livesAfter);
         reportGame(o);
         setOutcome(o);
-      }
+      } else saveProgress(o);
       go({ kind: "result", result: r, livesBefore: lives, livesAfter, next });
     },
-    [go, lives, attempts, ageBand]
+    [go, lives, attempts, ageBand, sessionSeed, game]
   );
 
   const handleNext = useCallback(
@@ -111,14 +112,13 @@ export function MinecartEscapeGame({ ageBand, seed, onExit }: MinecartEscapeGame
 
   let content: React.ReactNode = null;
   if (screen.kind === "start") content = <StartScreen onPlay={() => go({ kind: "intro", round: 1 })} />;
-  else if (screen.kind === "intro") content = <RoundIntro spec={ROUNDS[screen.round - 1]} onStart={() => go({ kind: "play", round: screen.round, attempt: 1 })} />;
+  else if (screen.kind === "intro") content = <RoundIntro spec={ROUNDS[screen.round - 1]} lives={lives} onStart={() => go({ kind: "play", round: screen.round, attempt: 1 })} />;
   else if (screen.kind === "play")
     content = (
       <RoundPlay
         key={`${game}-${screen.round}-${screen.attempt}`}
         spec={ROUNDS[screen.round - 1]}
         attempt={screen.attempt}
-        lives={lives}
         seed={`${sessionSeed}-g${game}-r${screen.round}-t${screen.attempt}`}
         onDone={handleRoundDone}
         onExit={onExit}
@@ -150,8 +150,14 @@ function StartScreen({ onPlay }: { onPlay: () => void }) {
           <img src={ASSETS.titlePlank} alt="" style={{ width: 350, height: "auto", display: "block", filter: "drop-shadow(0 8px 14px rgba(0,0,0,0.5))" }} />
           <h1 style={titleSignText}>Minecart Escape</h1>
         </div>
-        <div style={{ marginTop: 30 }}>
-          <FumiCart size={170} />
+        <div style={{ marginTop: 6 }}>
+          <FumiCart size={160} />
+        </div>
+        <div style={{ ...speechStyle, margin: "8px 24px 0", fontSize: 15.5, animation: "bubble-pop 500ms var(--ease-pop) 200ms both" }}>
+          {HOW_TO_PLAY.map((line) => (
+            <div key={line}>{line}</div>
+          ))}
+          <div style={{ position: "absolute", top: -9, left: "50%", marginLeft: -9, width: 18, height: 18, background: "#fffaf0", transform: "rotate(45deg)", borderLeft: "2px solid #c9a265", borderTop: "2px solid #c9a265" }} />
         </div>
       </div>
       <button type="button" className="tap-scale" onClick={onPlay} style={{ ...playButtonStyle, position: "absolute", bottom: 60, left: "50%", marginLeft: -110, width: 220, fontSize: 28 }}>
@@ -161,39 +167,36 @@ function StartScreen({ onPlay }: { onPlay: () => void }) {
   );
 }
 
-// Before each round: Fumi front and centre with the round's theme and the
-// sheet's instruction.
-function RoundIntro({ spec, onStart }: { spec: RoundSpec; onStart: () => void }) {
+// Before Round 1: the same "Round N" + theme card and Start button that
+// appears after each round (see RoundEndScreen).
+function RoundIntro({ spec, lives, onStart }: { spec: RoundSpec; lives: number; onStart: () => void }) {
   return (
     <>
-      <MineBackdrop dim={0.25} />
-      <div style={{ position: "absolute", top: SAFE_AREA_TOP + 14, left: 16, right: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-        <div style={{ zIndex: 2, marginBottom: -6, animation: "bubble-pop 400ms var(--ease-pop) both" }}>
-          <Plank>ROUND {spec.round}</Plank>
+      <MineBackdrop dim={0.3} />
+      <div style={heartsCorner}>
+        <Hearts lives={lives} size={22} />
+      </div>
+      <div style={{ ...roundCallLayout, animation: "bubble-pop 450ms var(--ease-pop) both" }}>
+        <RoundCall spec={spec} />
+        <button type="button" className="tap-scale" onClick={onStart} style={{ ...playButtonStyle, width: 230, marginTop: 10 }}>
+          Start
+        </button>
+      </div>
+    </>
+  );
+}
+
+// "Round N" in big letters over the round's theme panel.
+function RoundCall({ spec }: { spec: RoundSpec }) {
+  return (
+    <>
+      <div style={bigRoundText}>Round {spec.round}</div>
+      <WoodFramePanel style={{ width: "100%" }}>
+        <div style={{ padding: "12px 12px 10px", textAlign: "center" }}>
+          <div style={{ fontFamily: TEXT_DISPLAY, fontWeight: 800, fontSize: 22, color: INK, lineHeight: 1.1 }}>{spec.title}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#5a3a1a", marginTop: 4 }}>{spec.description}</div>
         </div>
-        <WoodFramePanel style={{ width: "100%", animation: "bubble-pop 450ms var(--ease-pop) 80ms both" }}>
-          <div style={{ padding: "14px 12px 10px", textAlign: "center" }}>
-            <div style={{ fontFamily: TEXT_DISPLAY, fontWeight: 800, fontSize: 26, color: INK, lineHeight: 1.1 }}>{spec.title}</div>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: "#5a3a1a", marginTop: 4 }}>{spec.description}</div>
-          </div>
-        </WoodFramePanel>
-      </div>
-
-      <div style={{ position: "absolute", top: 210, left: 0, right: 0, display: "flex", justifyContent: "center", animation: "bubble-pop 500ms var(--ease-pop) 160ms both" }}>
-        <FumiCart size={190} />
-      </div>
-
-      <div style={{ position: "absolute", top: 428, left: 24, right: 24, display: "flex", justifyContent: "center", animation: "bubble-pop 500ms var(--ease-pop) 260ms both" }}>
-        <div style={speechStyle}>
-          {INSTRUCTION}
-          <div style={{ position: "absolute", top: -9, left: "50%", marginLeft: -9, width: 18, height: 18, background: "#fffaf0", transform: "rotate(45deg)", borderLeft: "2px solid #c9a265", borderTop: "2px solid #c9a265" }} />
-        </div>
-      </div>
-
-
-      <button type="button" className="tap-scale" onClick={onStart} style={{ ...playButtonStyle, position: "absolute", bottom: 54, left: 60, right: 60 }}>
-        Start Round {spec.round}
-      </button>
+      </WoodFramePanel>
     </>
   );
 }
@@ -204,7 +207,7 @@ function RoundIntro({ spec, onStart }: { spec: RoundSpec; onStart: () => void })
 
 type Toast = { text: string; tone: "good" | "bad"; key: number };
 
-function RoundPlay({ spec, attempt, lives, seed, onDone, onExit }: { spec: RoundSpec; attempt: number; lives: number; seed: string; onDone: (r: RoundResult) => void; onExit: () => void }) {
+function RoundPlay({ spec, attempt, seed, onDone, onExit }: { spec: RoundSpec; attempt: number; seed: string; onDone: (r: RoundResult) => void; onExit: () => void }) {
   const puzzle = useMemo(() => generatePuzzle(spec.words, spec.gridSize, seed), [spec, seed]);
   const colorOrder = useMemo(() => shuffledColors(WORD_COLORS.length, `${seed}-colors`), [seed]);
   const targets = useMemo(() => puzzle.placements.map((p) => p.word), [puzzle]);
@@ -337,9 +340,6 @@ function RoundPlay({ spec, attempt, lives, seed, onDone, onExit }: { spec: Round
             <MiniCart key={i} full={i < found.length} />
           ))}
         </div>
-        <div style={{ ...stripChip, width: 66, padding: 0 }}>
-          <Hearts lives={lives} size={14} />
-        </div>
       </div>
 
       {/* ---- the grid ---- */}
@@ -450,7 +450,7 @@ function RoundEndScreen({ result, livesBefore, livesAfter, next, onNext }: { res
     <>
       <MineBackdrop dim={0.3} />
       {passed && <Confetti />}
-      <div style={{ position: "absolute", top: SAFE_AREA_TOP + 10, right: 14 }}>
+      <div style={heartsCorner}>
         <Hearts lives={livesAfter} losing={livesBefore > livesAfter ? livesAfter : undefined} size={22} />
       </div>
 
@@ -470,18 +470,9 @@ function RoundEndScreen({ result, livesBefore, livesAfter, next, onNext }: { res
 
       {/* beat 2: what comes next */}
       {beat === "next" && (
-        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: "0 28px", animation: "bubble-pop 450ms var(--ease-pop) both" }}>
+        <div style={{ ...roundCallLayout, animation: "bubble-pop 450ms var(--ease-pop) both" }}>
           {nextSpec ? (
-            <>
-              <div style={bigRoundText}>Round {nextSpec.round}</div>
-              <WoodFramePanel style={{ width: "100%" }}>
-                <div style={{ padding: "12px 12px 10px", textAlign: "center" }}>
-                  <div style={{ fontFamily: TEXT_DISPLAY, fontWeight: 800, fontSize: 22, color: INK, lineHeight: 1.1 }}>{nextSpec.title}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#5a3a1a", marginTop: 4 }}>{nextSpec.description}</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: "#7a5528", marginTop: 8 }}>{INSTRUCTION}</div>
-                </div>
-              </WoodFramePanel>
-            </>
+            <RoundCall spec={nextSpec} />
           ) : (
             <div style={{ ...bigRoundText, fontSize: next.kind === "final" && next.outOfLives ? 44 : 40, textAlign: "center" }}>{next.kind === "final" && next.outOfLives ? OUT_OF_LIVES_LINE : "Mine Escaped!"}</div>
           )}
@@ -525,7 +516,7 @@ function FinalScreen({ outcome, onPlayAgain, onFinish }: { outcome: GameOutcome;
   const [claimed, setClaimed] = useState(false);
   // The game itself was saved when it ended; this adds the accessory.
   const claim = () => {
-    recordAccessory(chosen);
+    recordAccessory(outcome.gameId, chosen);
     setClaimed(true);
   };
   return (
@@ -656,6 +647,21 @@ const titleSignText: React.CSSProperties = {
   paintOrder: "stroke fill",
   textShadow: "0 3px 0 #4a2508, 0 5px 8px rgba(30,12,0,0.55)",
   transform: "rotate(-2deg)",
+};
+
+// Lives are shown only on the round screens (intro and round end), where a
+// life can be lost — not over the grid.
+const heartsCorner: React.CSSProperties = { position: "absolute", top: SAFE_AREA_TOP + 10, right: 14, zIndex: 5 };
+
+const roundCallLayout: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 18,
+  padding: "0 28px",
 };
 
 const bigRoundText: React.CSSProperties = {

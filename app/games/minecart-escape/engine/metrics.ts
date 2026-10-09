@@ -52,13 +52,18 @@ export function computeMetrics(attempts: RoundResult[]): WordSearchMetrics {
 }
 
 // 3 stars = FIST (90%+ of all words); 2 = 60%+; otherwise 1.
-export function computeGameOutcome(ageBand: AgeBand, attempts: RoundResult[], livesLeft: number): GameOutcome {
+// `finished` is false while the game is still being played (saved after
+// every round so a game left half-way is kept too).
+export function computeGameOutcome(gameId: string, ageBand: AgeBand, attempts: RoundResult[], livesLeft: number, finished: boolean): GameOutcome {
   const metrics = computeMetrics(attempts);
+  const completed = metrics.roundsCleared === ROUNDS.length;
   const fistAchieved = metrics.accuracyPct >= REWARDS.fistThresholdPct;
   return {
+    gameId,
+    status: !finished ? "in-progress" : completed ? "completed" : "out-of-lives",
     ageBand,
     rounds: attempts,
-    completed: metrics.roundsCleared === ROUNDS.length,
+    completed,
     livesLeft,
     metrics,
     starsEarned: fistAchieved ? 3 : metrics.accuracyPct >= 60 ? 2 : 1,

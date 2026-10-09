@@ -51,6 +51,8 @@ Change the words, grid size or time there. Copy (instruction, "Track Cleared!",
 
 `GameOutcome.rounds[]` holds every attempt (`attempt`, `passed`), each with: the words found (with `foundAtMs`),
 missed words, invalid and repeat selections, time taken, time remaining, and how the
-round ended (`all-found` / `time-up`). The game is saved as soon as it ends (not only on Claim Rewards); the accessory is
-added to the localStorage copy when claimed. The CSV trials export has one row per
+round ended (`all-found` / `time-up`). Each game is one entry in localStorage
+(`fumi-minecart-escape-results`, keyed by `gameId`), saved after every round with
+`status: "in-progress"`, then `"completed"` or `"out-of-lives"`; the accessory is
+added when claimed. Finished games are also sent to the backend. The CSV trials export has one row per
 word per round attempt.
