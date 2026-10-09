@@ -529,6 +529,38 @@ button {
   }
 }
 
+/* Minecart Escape (word search) */
+@keyframes mw-pop {
+  0% { transform-origin: center; opacity: 0; scale: 0.6; }
+  100% { opacity: 1; scale: 1; }
+}
+
+@keyframes mw-wrong {
+  0% { opacity: 1; translate: 0 0; }
+  20% { translate: -5px 0; }
+  40% { translate: 5px 0; }
+  60% { translate: -3px 0; }
+  100% { opacity: 0; translate: 0 0; }
+}
+
+@keyframes mw-toast {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  15% { opacity: 1; transform: translateY(0) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes mw-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mw-cheer {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-14px) rotate(-3deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(-8px) rotate(3deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

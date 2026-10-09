@@ -6,7 +6,7 @@ import path from "node:path";
 // appended as one JSON line to data/game-results/<game>.jsonl in the
 // project folder. Read it back through /api/results/<game> (JSON or CSV).
 
-export const GAMES = ["signal-watch", "twin-current"] as const;
+export const GAMES = ["signal-watch", "twin-current", "minecart-escape"] as const;
 export type GameId = (typeof GAMES)[number];
 
 export function isGameId(value: string): value is GameId {
@@ -91,14 +91,16 @@ export function toCsv(rows: Record<string, unknown>[]): string {
 // One row per session: id, time, and every summary metric/reward field.
 export function sessionRows(sessions: StoredSession[]): Record<string, unknown>[] {
   return sessions.map((s) => {
-    const { stageResults, roundResults, ...summary } = s.outcome as Record<string, unknown>;
+    const { stageResults, roundResults, rounds, ...summary } = s.outcome as Record<string, unknown>;
     void stageResults;
     void roundResults;
+    void rounds;
     return { sessionId: s.sessionId, receivedAt: s.receivedAt, ...flatten(summary) };
   });
 }
 
-// One row per trial: each signal (Signal Watch) or each round (Twin Current).
+// One row per trial: each signal (Signal Watch), each round (Twin Current) or
+// each word per round (Minecart Escape).
 export function trialRows(game: GameId, sessions: StoredSession[]): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
   for (const s of sessions) {
@@ -108,6 +110,14 @@ export function trialRows(game: GameId, sessions: StoredSession[]): Record<strin
       for (const st of stages) {
         for (const sig of st.signals ?? []) rows.push({ ...base, rowType: "signal", ...flatten(sig) });
         for (const tap of st.strayTaps ?? []) rows.push({ ...base, rowType: "stray-tap", ...flatten(tap) });
+      }
+    } else if (game === "minecart-escape") {
+      // One row per word per round: found (with when) or missed.
+      const rounds = (s.outcome as { rounds?: { round: number; title: string; gridSize: number; found: { word: string; foundAtMs: number }[]; missedWords: string[]; invalidSelections: number; timeTakenMs: number; end: string }[] }).rounds ?? [];
+      for (const r of rounds) {
+        const roundInfo = { round: r.round, title: r.title, gridSize: r.gridSize, roundEnd: r.end, roundTimeTakenMs: r.timeTakenMs, roundInvalidSelections: r.invalidSelections };
+        for (const f of r.found) rows.push({ ...base, rowType: "word", ...roundInfo, word: f.word, found: true, foundAtMs: f.foundAtMs });
+        for (const w of r.missedWords) rows.push({ ...base, rowType: "word", ...roundInfo, word: w, found: false, foundAtMs: "" });
       }
     } else {
       const rounds = ((s.outcome as { roundResults?: Record<string, unknown>[] }).roundResults ?? []);

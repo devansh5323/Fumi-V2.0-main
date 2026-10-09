@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PathfinderSweepGame } from "./games/pathfinder-sweep";
 import { SignalWatchGame } from "./games/signal-watch";
 import { TwinCurrentGame } from "./games/twin-current";
+import { MinecartEscapeGame } from "./games/minecart-escape";
 import { PhoneFrame, PHONE_SCREEN_SIZE } from "./components/PhoneFrame";
 import { GamePicker, type GameEntry } from "./components/GamePicker";
 
@@ -33,7 +34,15 @@ const GAMES: GameEntry[] = [
     art: "/games/twin-current/backgrounds/river.jpg",
     artPosition: "50% 40%",
     accent: "#3DDC84",
+  },  {
+    id: "minecart-escape",
+    title: "Minecart Escape",
+    tagline: "Find the hidden words to clear the mine track!",
+    skills: "Visual scanning · Vocabulary",
+    art: "/games/minecart-escape/mascot/fumi.png",
+    accent: "#ffb02e",
   },
+
 ];
 
 export default function Home() {
@@ -66,6 +75,7 @@ export default function Home() {
           {activeGame === "pathfinder-sweep" && <PathfinderSweepGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "signal-watch" && <SignalWatchGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "twin-current" && <TwinCurrentGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
+          {activeGame === "minecart-escape" && <MinecartEscapeGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
         </div>
       </PhoneFrame>
     </main>

@@ -27,7 +27,7 @@ import { StartScreen } from "./components/StartScreen";
 import { FumiGuide } from "./components/FumiGuide";
 import { Fumi } from "../../components/Fumi";
 import { completesDay } from "../../lib/dayProgress";
-import { reportGame } from "./lib/sessionReporter";
+import { recordAccessories, reportGame } from "./lib/sessionReporter";
 
 // intro (quest + narration) -> playing (4 practice + 16 scored rounds,
 // back-to-back) -> complete (stats, rewards, accessory pick).
@@ -130,7 +130,9 @@ export function TwinCurrentGame({ ageBand, seed, onExit }: TwinCurrentGameProps)
       if (next >= rounds.length) {
         const duration = Date.now() - startedAtRef.current - pausedTotalRef.current;
         const earnsDay2Bonus = completesDay(DEFAULT_QUEST.day, "twin-current");
-        setOutcome(computeGameOutcome(ageBand, resultsRef.current, duration, energyRef.current, earnsDay2Bonus));
+        const finalOutcome = computeGameOutcome(ageBand, resultsRef.current, duration, energyRef.current, earnsDay2Bonus);
+        reportGame(finalOutcome);
+        setOutcome(finalOutcome);
         runTransition(() => setScreen("complete"));
         return;
       }
@@ -727,7 +729,7 @@ function GameComplete({ outcome, onPlayAgain, onFinish }: { outcome: GameOutcome
   };
 
   const claim = () => {
-    reportGame({ ...outcome, accessoriesChosen: chosen });
+    recordAccessories(chosen);
     setClaimed(true);
   };
 

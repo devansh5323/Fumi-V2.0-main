@@ -11,6 +11,7 @@ screen-based experience presented inside a phone-frame device mockup.
 | 1 | Pathfinder Sweep | [`app/games/pathfinder-sweep/`](app/games/pathfinder-sweep/README.md) | Selective attention, visual scanning |
 | 2 | Signal Watch | [`app/games/signal-watch/`](app/games/signal-watch/README.md) | Sustained attention, signal detection |
 | 3 | Twin Current | [`app/games/twin-current/`](app/games/twin-current/README.md) | Divided attention, dynamic visual attention, task switching |
+| 4 | Minecart Escape | [`app/games/minecart-escape/`](app/games/minecart-escape/README.md) | Visual scanning, vocabulary, sustained search (word search) |
 
 ## Tech stack
 
@@ -88,7 +89,7 @@ one game's folder and understand it without reading any other game's code.
 
 ## Game results backend (local)
 
-Signal Watch and Twin Current send every completed session to a small
+Signal Watch, Twin Current and Minecart Escape send every completed session to a small
 local backend built into the app (Next.js route handlers in
 `app/api/results/`). The data is stored on disk as one JSON line per
 session:
@@ -96,6 +97,7 @@ session:
 ```
 data/game-results/signal-watch.jsonl
 data/game-results/twin-current.jsonl
+data/game-results/minecart-escape.jsonl
 ```
 
 `data/` is git-ignored. A session is saved when the child taps
@@ -109,9 +111,9 @@ With `pnpm dev` running, engineers can pull the data from:
 | `/api/results` | Which games have data, session counts, links |
 | `/api/results/<game>` | All sessions, full JSON (every metric plus per-trial data) |
 | `/api/results/<game>?format=csv` | One row per session: every summary metric, flattened (`metrics.detectionAccuracyPct`, `metrics.performanceByBlock.0.detected`, …) |
-| `/api/results/<game>?format=csv&level=trials` | One row per trial: each signal (Signal Watch) or each scored round (Twin Current) |
+| `/api/results/<game>?format=csv&level=trials` | One row per trial: each signal (Signal Watch), each scored round (Twin Current) or each word per round, found or missed (Minecart Escape) |
 
-`<game>` is `signal-watch` or `twin-current`. Sessions are written with a
+`<game>` is `signal-watch`, `twin-current` or `minecart-escape`. Sessions are written with a
 `sessionId` (UUID) and a `receivedAt` timestamp. To reset the data, delete
 the `.jsonl` files.
 
