@@ -147,10 +147,11 @@ export function IronCorners() {
 }
 
 // Fumi riding a wooden minecart (replaces the reference's mascot).
-export function FumiCart({ size = 112, bounce = false }: { size?: number; bounce?: boolean }) {
+// motion: "float" (default, gentle drift), "bounce" (celebrating) or "still".
+export function FumiCart({ size = 112, motion = "float" }: { size?: number; motion?: "float" | "bounce" | "still" }) {
   const s = size / 112;
   return (
-    <div aria-hidden style={{ position: "relative", width: size, height: size * 1.02, animation: bounce ? "mw-cheer 900ms ease-in-out infinite" : "float-y 3.2s ease-in-out infinite" }}>
+    <div aria-hidden style={{ position: "relative", width: size, height: size * 1.02, animation: motion === "bounce" ? "mw-cheer 900ms ease-in-out infinite" : motion === "float" ? "float-y 3.2s ease-in-out infinite" : undefined }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={ASSETS.fumi} alt="Fumi" style={{ position: "absolute", left: 18 * s, top: 0, width: 78 * s, height: "auto", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.4))" }} />
       <svg width={size} height={56 * s} viewBox="0 0 112 56" style={{ position: "absolute", left: 0, top: 58 * s }}>

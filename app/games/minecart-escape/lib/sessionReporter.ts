@@ -3,7 +3,9 @@ import type { GameOutcome } from "../types";
 const STORAGE_KEY = "fumi-minecart-escape-results";
 const MAX_STORED_RESULTS = 100;
 
-// Sends the finished game to the local backend, and keeps a localStorage copy.
+// Called once, as soon as the game ends (all rounds cleared or out of lives),
+// so the game is kept even if the child leaves without claiming rewards.
+// Sends it to the local backend and keeps a localStorage copy.
 export function reportGame(result: GameOutcome): void {
   if (typeof window === "undefined") return;
   // Store on the local backend (data/game-results/minecart-escape.jsonl) for
@@ -25,5 +27,20 @@ export function reportGame(result: GameOutcome): void {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...existing, result].slice(-MAX_STORED_RESULTS)));
   } catch {
     // Storage can fail (quota, private mode) — non-critical, fail silently.
+  }
+}
+
+// "Claim Rewards" fills in the accessory on the stored copy of the game that
+// just ended (the latest entry).
+export function recordAccessory(accessoryChosen: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const existing: GameOutcome[] = raw ? JSON.parse(raw) : [];
+    if (existing.length === 0) return;
+    existing[existing.length - 1] = { ...existing[existing.length - 1], accessoryChosen };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+  } catch {
+    // non-critical
   }
 }

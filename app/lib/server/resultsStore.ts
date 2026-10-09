@@ -112,10 +112,10 @@ export function trialRows(game: GameId, sessions: StoredSession[]): Record<strin
         for (const tap of st.strayTaps ?? []) rows.push({ ...base, rowType: "stray-tap", ...flatten(tap) });
       }
     } else if (game === "minecart-escape") {
-      // One row per word per round: found (with when) or missed.
-      const rounds = (s.outcome as { rounds?: { round: number; title: string; gridSize: number; found: { word: string; foundAtMs: number }[]; missedWords: string[]; invalidSelections: number; timeTakenMs: number; end: string }[] }).rounds ?? [];
+      // One row per word per round attempt: found (with when) or missed.
+      const rounds = (s.outcome as { rounds?: { round: number; attempt?: number; passed?: boolean; title: string; gridSize: number; found: { word: string; foundAtMs: number }[]; missedWords: string[]; invalidSelections: number; timeTakenMs: number; end: string }[] }).rounds ?? [];
       for (const r of rounds) {
-        const roundInfo = { round: r.round, title: r.title, gridSize: r.gridSize, roundEnd: r.end, roundTimeTakenMs: r.timeTakenMs, roundInvalidSelections: r.invalidSelections };
+        const roundInfo = { round: r.round, attempt: r.attempt ?? 1, roundPassed: r.passed ?? "", title: r.title, gridSize: r.gridSize, roundEnd: r.end, roundTimeTakenMs: r.timeTakenMs, roundInvalidSelections: r.invalidSelections };
         for (const f of r.found) rows.push({ ...base, rowType: "word", ...roundInfo, word: f.word, found: true, foundAtMs: f.foundAtMs });
         for (const w of r.missedWords) rows.push({ ...base, rowType: "word", ...roundInfo, word: w, found: false, foundAtMs: "" });
       }

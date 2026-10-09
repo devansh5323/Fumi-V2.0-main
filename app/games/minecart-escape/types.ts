@@ -31,8 +31,11 @@ export type FoundWord = {
 
 export type RoundEnd = "all-found" | "time-up";
 
+// One attempt at a round (a round replayed after "Try Again" has several).
 export type RoundResult = {
   round: number;
+  attempt: number; // 1-based, per round
+  passed: boolean; // found at least PASS_WORDS words
   title: string;
   gridSize: number;
   timeLimitMs: number;
@@ -47,17 +50,22 @@ export type RoundResult = {
   end: RoundEnd;
 };
 
+// Word counts use each round's last attempt; time and selection counts
+// include every attempt.
 export type WordSearchMetrics = {
   roundsPlayed: number;
-  totalWords: number;
+  attemptsPlayed: number;
+  livesLost: number;
+  totalWords: number; // all 30 words in the game
   totalWordsFound: number;
   accuracyPct: number; // words found / total words
   invalidSelections: number;
   repeatSelections: number;
-  roundsCleared: number; // rounds where all 10 were found
+  roundsCleared: number; // rounds passed (PASS_WORDS or more found)
+  roundsAllFound: number; // rounds where all 10 were found
   avgTimePerWordMs: number | null; // across all found words
   totalTimeMs: number;
-  byRound: { round: number; title: string; wordsFound: number; wordsTotal: number; timeTakenMs: number; end: RoundEnd }[];
+  byRound: { round: number; title: string; wordsFound: number; wordsTotal: number; timeTakenMs: number; end: RoundEnd; passed: boolean; attempts: number }[];
 };
 
 export type GameRewards = {
@@ -70,7 +78,9 @@ export type GameRewards = {
 
 export type GameOutcome = {
   ageBand: AgeBand;
-  rounds: RoundResult[];
+  rounds: RoundResult[]; // every attempt, in play order
+  completed: boolean; // all 3 rounds cleared (false = ran out of lives)
+  livesLeft: number;
   metrics: WordSearchMetrics;
   starsEarned: number;
   rewards: GameRewards;

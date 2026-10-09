@@ -1,16 +1,24 @@
 import type { AgeBand, GameOutcome, RoundResult, WordSearchMetrics } from "../types";
-import { REWARDS } from "../config";
+import { REWARDS, ROUNDS } from "../config";
 
 function pct(num: number, den: number): number {
   return den === 0 ? 0 : Math.round((num / den) * 1000) / 10;
 }
 
-export function computeMetrics(rounds: RoundResult[]): WordSearchMetrics {
-  const totalWords = rounds.reduce((s, r) => s + r.wordsTotal, 0);
+// The last attempt at each round played, in round order.
+export function lastAttempts(attempts: RoundResult[]): RoundResult[] {
+  const byRound = new Map<number, RoundResult>();
+  for (const a of attempts) byRound.set(a.round, a);
+  return [...byRound.values()].sort((a, b) => a.round - b.round);
+}
+
+export function computeMetrics(attempts: RoundResult[]): WordSearchMetrics {
+  const rounds = lastAttempts(attempts);
+  const totalWords = ROUNDS.reduce((s, r) => s + r.words.length, 0);
   const totalWordsFound = rounds.reduce((s, r) => s + r.wordsFound, 0);
-  // Time per found word: gaps between successive finds within each round.
+  // Time per found word: gaps between successive finds within each attempt.
   const perWord: number[] = [];
-  for (const r of rounds) {
+  for (const r of attempts) {
     let prev = 0;
     for (const f of [...r.found].sort((a, b) => a.foundAtMs - b.foundAtMs)) {
       perWord.push(f.foundAtMs - prev);
@@ -19,25 +27,39 @@ export function computeMetrics(rounds: RoundResult[]): WordSearchMetrics {
   }
   return {
     roundsPlayed: rounds.length,
+    attemptsPlayed: attempts.length,
+    livesLost: attempts.filter((a) => !a.passed).length,
     totalWords,
     totalWordsFound,
     accuracyPct: pct(totalWordsFound, totalWords),
-    invalidSelections: rounds.reduce((s, r) => s + r.invalidSelections, 0),
-    repeatSelections: rounds.reduce((s, r) => s + r.repeatSelections, 0),
-    roundsCleared: rounds.filter((r) => r.end === "all-found").length,
+    invalidSelections: attempts.reduce((s, r) => s + r.invalidSelections, 0),
+    repeatSelections: attempts.reduce((s, r) => s + r.repeatSelections, 0),
+    roundsCleared: rounds.filter((r) => r.passed).length,
+    roundsAllFound: rounds.filter((r) => r.end === "all-found").length,
     avgTimePerWordMs: perWord.length ? Math.round(perWord.reduce((a, b) => a + b, 0) / perWord.length) : null,
-    totalTimeMs: rounds.reduce((s, r) => s + r.timeTakenMs, 0),
-    byRound: rounds.map((r) => ({ round: r.round, title: r.title, wordsFound: r.wordsFound, wordsTotal: r.wordsTotal, timeTakenMs: r.timeTakenMs, end: r.end })),
+    totalTimeMs: attempts.reduce((s, r) => s + r.timeTakenMs, 0),
+    byRound: rounds.map((r) => ({
+      round: r.round,
+      title: r.title,
+      wordsFound: r.wordsFound,
+      wordsTotal: r.wordsTotal,
+      timeTakenMs: r.timeTakenMs,
+      end: r.end,
+      passed: r.passed,
+      attempts: attempts.filter((a) => a.round === r.round).length,
+    })),
   };
 }
 
 // 3 stars = FIST (90%+ of all words); 2 = 60%+; otherwise 1.
-export function computeGameOutcome(ageBand: AgeBand, rounds: RoundResult[]): GameOutcome {
-  const metrics = computeMetrics(rounds);
+export function computeGameOutcome(ageBand: AgeBand, attempts: RoundResult[], livesLeft: number): GameOutcome {
+  const metrics = computeMetrics(attempts);
   const fistAchieved = metrics.accuracyPct >= REWARDS.fistThresholdPct;
   return {
     ageBand,
-    rounds,
+    rounds: attempts,
+    completed: metrics.roundsCleared === ROUNDS.length,
+    livesLeft,
     metrics,
     starsEarned: fistAchieved ? 3 : metrics.accuracyPct >= 60 ? 2 : 1,
     rewards: {

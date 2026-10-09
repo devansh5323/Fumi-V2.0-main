@@ -38,11 +38,18 @@ export const ROUNDS: RoundSpec[] = [
 export const INSTRUCTION = "Find the hidden words in the grid to clear the mine track";
 // From the sheet: "At the end of every round Fumi can come say — Track Cleared!"
 export const ROUND_END_LINE = "Track Cleared!";
-// Child-friendly Hinglish for the round-result screen.
-export const ALL_FOUND_HINGLISH = "Yeh track clear ho gaya!";
-export function timeUpHinglish(found: number, total: number): string {
-  return `Shabaash! Tumne ${found} / ${total} words dhoondh liye!`;
+// What Fumi says after each round.
+export function foundLine(found: number): string {
+  return `You found ${found} word${found === 1 ? "" : "s"}!`;
 }
+export const TRY_AGAIN_LINE = "Try Again";
+export const OUT_OF_LIVES_LINE = "Out of lives!";
+
+// A round is cleared with at least this many words; fewer costs a life and
+// the round is replayed (same words, freshly shuffled grid).
+export const PASS_WORDS = 5;
+// Lives for the whole game; losing the last one ends the game.
+export const LIVES = 3;
 
 // ---------------------------------------------------------------------------
 // Rewards (unchanged from the Minecart Escape brief)
