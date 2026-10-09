@@ -3,10 +3,11 @@ import type { SessionOutcome } from "../types";
 const STORAGE_KEY = "fumi-lantern-grid-results";
 const MAX_STORED_RESULTS = 100;
 
-// localStorage holds one entry per session (by sessionId), replaced as the
-// session updates — after every solved puzzle and when it ends — so a game
-// left half-way is still kept.
-export function saveProgress(outcome: SessionOutcome): void {
+// Saves the session (one entry per sessionId, replaced as it updates) to
+// browser localStorage AND to the local backend — called when the first
+// puzzle appears, after every drop, on exit and when the game ends, so even
+// a game left half-way is kept in both places.
+export function saveSession(outcome: SessionOutcome): void {
   if (typeof window === "undefined") return;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -15,16 +16,11 @@ export function saveProgress(outcome: SessionOutcome): void {
     const next = i < 0 ? [...existing, outcome] : existing.map((s, k) => (k === i ? outcome : s));
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next.slice(-MAX_STORED_RESULTS)));
   } catch {
-    // Storage can fail (quota, private mode) — non-critical, fail silently.
+    // Storage can fail (quota, private mode) — the backend copy below still holds it.
   }
-}
-
-// When the session ends (all 10 solved, or out of lives): final local save,
-// and sent to the local backend (data/game-results/lantern-grid.jsonl, see
-// /api/results). Fire-and-forget — the game never waits.
-export function reportSession(outcome: SessionOutcome): void {
-  if (typeof window === "undefined") return;
-  saveProgress(outcome);
+  // Local backend: data/game-results/lantern-grid.jsonl (see /api/results).
+  // Each update is appended; reads keep only the latest per sessionId.
+  // Fire-and-forget — the game never waits.
   const body = JSON.stringify(outcome);
   void fetch("/api/results/lantern-grid", {
     method: "POST",

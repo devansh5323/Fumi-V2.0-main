@@ -49,7 +49,22 @@ export async function readSessions(game: GameId): Promise<StoredSession[]> {
       // Skip a partially written line rather than failing the whole read.
     }
   }
-  return out;
+  return latestPerGameSession(out);
+}
+
+// Games that save as they go (Lantern Grid) post the same game session
+// several times; keep only the latest copy of each (keyed by the outcome's
+// own sessionId / gameId). Records without one are kept as they are.
+function latestPerGameSession(records: StoredSession[]): StoredSession[] {
+  const latest = new Map<string, number>();
+  records.forEach((r, i) => {
+    const key = (r.outcome.sessionId ?? r.outcome.gameId) as string | undefined;
+    if (typeof key === "string") latest.set(key, i);
+  });
+  return records.filter((r, i) => {
+    const key = (r.outcome.sessionId ?? r.outcome.gameId) as string | undefined;
+    return typeof key !== "string" || latest.get(key) === i;
+  });
 }
 
 // ---------------------------------------------------------------------------

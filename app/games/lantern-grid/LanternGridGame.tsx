@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgeBand, AttemptRecord, LanternCode, PuzzleResult, SessionOutcome } from "./types";
 import { ASSETS, COMPLETE_LINE, FUMI_INTRO, GAME_OVER_LINE, INSTRUCTION, LANTERNS, LIVES, OPTION_LETTERS, PLAY_AREA, PUZZLES, RETURN_MS, SAFE_AREA_TOP, SOLVED_HOLD_MS, WRONG_HOLD_MS } from "./config";
 import { buildOutcome } from "./engine/session";
-import { reportSession, saveProgress } from "./lib/sessionReporter";
+import { saveSession } from "./lib/sessionReporter";
 import { GroveBackdrop, Hearts, ImageButton, INK, Parchment, Plank, ProgressBar, TEXT_DISPLAY, WOOD_DARK, WOOD_EDGE, playButtonStyle, secondaryButtonStyle, speechStyle } from "./components/Art";
 import { PuzzleStage, type DropResult } from "./components/PuzzleStage";
 import { Typewriter } from "../../components/Typewriter";
@@ -105,24 +105,6 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
     setScreen("play");
   }, []);
 
-  const handleSlideEnd = useCallback(() => {
-    if (slide === "in") {
-      setSlide("idle");
-      setActive(true);
-      if (!clock.current.armed) {
-        // first puzzle is now playable: start background timing
-        clock.current.armed = true;
-        clock.current.wallStart = Date.now();
-        clock.current.startedAt = new Date().toISOString();
-        runClock(!paused);
-      }
-      puzzleStart.current = elapsed();
-    } else if (slide === "out") {
-      setIndex((i) => i + 1);
-      setSlide("in");
-    }
-  }, [slide, paused, runClock, elapsed]);
-
   const makeOutcome = useCallback(
     (status: SessionOutcome["status"], puzzles: PuzzleResult[], livesLeft: number) =>
       buildOutcome({
@@ -137,6 +119,25 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
       }),
     [sessionId, ageBand, elapsed]
   );
+
+  const handleSlideEnd = useCallback(() => {
+    if (slide === "in") {
+      setSlide("idle");
+      setActive(true);
+      if (!clock.current.armed) {
+        // first puzzle is now playable: start background timing
+        clock.current.armed = true;
+        clock.current.wallStart = Date.now();
+        clock.current.startedAt = new Date().toISOString();
+        runClock(!paused);
+        saveSession(makeOutcome("in-progress", [], LIVES)); // session exists from the first puzzle
+      }
+      puzzleStart.current = elapsed();
+    } else if (slide === "out") {
+      setIndex((i) => i + 1);
+      setSlide("in");
+    }
+  }, [slide, paused, runClock, elapsed, makeOutcome]);
 
   const handleAttempt = useCallback(
     (optionIndex: number): DropResult => {
@@ -157,14 +158,14 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
         if (index === PUZZLES.length - 1) {
           runClock(false); // tenth solved: stop timing immediately
           const o = makeOutcome("completed", all, lives);
-          reportSession(o);
+          saveSession(o);
           setOutcome(o);
           later(() => {
             setFumiSpot("center");
             setScreen("complete");
           }, SOLVED_HOLD_MS);
         } else {
-          saveProgress(makeOutcome("in-progress", all, lives));
+          saveSession(makeOutcome("in-progress", all, lives));
           later(() => setSlide("out"), SOLVED_HOLD_MS);
         }
         return "correct";
@@ -177,18 +178,27 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
         setActive(false);
         runClock(false);
         const o = makeOutcome("game-over", all, 0);
-        reportSession(o);
+        saveSession(o);
         setOutcome(o);
         // let the ✕ card finish returning, then end
         later(() => {
           setFumiSpot("center");
           setScreen("gameover");
         }, WRONG_HOLD_MS + RETURN_MS + 350);
-      } else saveProgress(makeOutcome("in-progress", all, left));
+      } else saveSession(makeOutcome("in-progress", all, left));
       return "wrong";
     },
     [index, results, lives, elapsed, runClock, makeOutcome, later]
   );
+
+  // Leaving mid-game still saves the session so far.
+  const exitGame = () => {
+    if (screen === "play" && clock.current.armed) {
+      runClock(false);
+      saveSession(makeOutcome("exited", results, lives));
+    }
+    onExit();
+  };
 
   const setPause = (on: boolean) => {
     setPaused(on);
@@ -287,7 +297,7 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
               <button type="button" className="tap-scale" onClick={() => setPause(false)} style={playButtonStyle}>
                 Resume
               </button>
-              <button type="button" className="tap-scale" onClick={onExit} style={{ ...secondaryButtonStyle, background: "#6e421d" }}>
+              <button type="button" className="tap-scale" onClick={exitGame} style={{ ...secondaryButtonStyle, background: "#6e421d" }}>
                 Exit
               </button>
             </div>

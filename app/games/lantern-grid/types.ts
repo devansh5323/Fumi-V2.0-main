@@ -52,7 +52,7 @@ export type SessionMetrics = {
 
 export type SessionOutcome = {
   sessionId: string;
-  status: "in-progress" | "completed" | "game-over";
+  status: "in-progress" | "completed" | "game-over" | "exited"; // exited = left before finishing
   ageBand: AgeBand;
   startedAt: string; // ISO, when the first puzzle became playable
   puzzles: PuzzleResult[];
