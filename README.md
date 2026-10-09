@@ -12,6 +12,7 @@ screen-based experience presented inside a phone-frame device mockup.
 | 2 | Signal Watch | [`app/games/signal-watch/`](app/games/signal-watch/README.md) | Sustained attention, signal detection |
 | 3 | Twin Current | [`app/games/twin-current/`](app/games/twin-current/README.md) | Divided attention, dynamic visual attention, task switching |
 | 4 | Minecart Escape | [`app/games/minecart-escape/`](app/games/minecart-escape/README.md) | Visual scanning, vocabulary, sustained search (word search) |
+| 5 | Lantern Grid | [`app/games/lantern-grid/`](app/games/lantern-grid/README.md) | Logical reasoning, pattern completion |
 
 ## Tech stack
 
@@ -89,7 +90,7 @@ one game's folder and understand it without reading any other game's code.
 
 ## Game results backend (local)
 
-Signal Watch, Twin Current and Minecart Escape send every completed session to a small
+Signal Watch, Twin Current, Minecart Escape and Lantern Grid send every completed session to a small
 local backend built into the app (Next.js route handlers in
 `app/api/results/`). The data is stored on disk as one JSON line per
 session:
@@ -111,7 +112,7 @@ With `pnpm dev` running, engineers can pull the data from:
 | `/api/results` | Which games have data, session counts, links |
 | `/api/results/<game>` | All sessions, full JSON (every metric plus per-trial data) |
 | `/api/results/<game>?format=csv` | One row per session: every summary metric, flattened (`metrics.detectionAccuracyPct`, `metrics.performanceByBlock.0.detected`, …) |
-| `/api/results/<game>?format=csv&level=trials` | One row per trial: each signal (Signal Watch), each scored round (Twin Current) or each word per round, found or missed (Minecart Escape) |
+| `/api/results/<game>?format=csv&level=trials` | One row per trial: each signal (Signal Watch), each scored round (Twin Current) or each word per round, found or missed (Minecart Escape) or each puzzle (Lantern Grid) |
 
 `<game>` is `signal-watch`, `twin-current` or `minecart-escape`. Sessions are written with a
 `sessionId` (UUID) and a `receivedAt` timestamp. To reset the data, delete

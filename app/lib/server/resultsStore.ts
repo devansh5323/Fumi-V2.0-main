@@ -6,7 +6,7 @@ import path from "node:path";
 // appended as one JSON line to data/game-results/<game>.jsonl in the
 // project folder. Read it back through /api/results/<game> (JSON or CSV).
 
-export const GAMES = ["signal-watch", "twin-current", "minecart-escape"] as const;
+export const GAMES = ["signal-watch", "twin-current", "minecart-escape", "lantern-grid"] as const;
 export type GameId = (typeof GAMES)[number];
 
 export function isGameId(value: string): value is GameId {
@@ -91,16 +91,17 @@ export function toCsv(rows: Record<string, unknown>[]): string {
 // One row per session: id, time, and every summary metric/reward field.
 export function sessionRows(sessions: StoredSession[]): Record<string, unknown>[] {
   return sessions.map((s) => {
-    const { stageResults, roundResults, rounds, ...summary } = s.outcome as Record<string, unknown>;
+    const { stageResults, roundResults, rounds, puzzles, ...summary } = s.outcome as Record<string, unknown>;
     void stageResults;
     void roundResults;
     void rounds;
+    void puzzles;
     return { sessionId: s.sessionId, receivedAt: s.receivedAt, ...flatten(summary) };
   });
 }
 
 // One row per trial: each signal (Signal Watch), each round (Twin Current) or
-// each word per round (Minecart Escape).
+// each word per round (Minecart Escape) or each puzzle (Lantern Grid).
 export function trialRows(game: GameId, sessions: StoredSession[]): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
   for (const s of sessions) {
@@ -110,6 +111,23 @@ export function trialRows(game: GameId, sessions: StoredSession[]): Record<strin
       for (const st of stages) {
         for (const sig of st.signals ?? []) rows.push({ ...base, rowType: "signal", ...flatten(sig) });
         for (const tap of st.strayTaps ?? []) rows.push({ ...base, rowType: "stray-tap", ...flatten(tap) });
+      }
+    } else if (game === "lantern-grid") {
+      // One row per puzzle reached: solved?, wrong drops, background time.
+      const o = s.outcome as { sessionId?: string; status?: string; puzzles?: { puzzle: number; answer: string; solved: boolean; wrongAttempts: number; timeToSolveMs: number | null; attempts: { optionLetter: string; option: string; correct: boolean; atMs: number }[] }[] };
+      for (const p of o.puzzles ?? []) {
+        rows.push({
+          ...base,
+          rowType: "puzzle",
+          gameSessionId: o.sessionId ?? "",
+          sessionStatus: o.status ?? "",
+          puzzle: p.puzzle,
+          answer: p.answer,
+          solved: p.solved,
+          wrongAttempts: p.wrongAttempts,
+          timeToSolveMs: p.timeToSolveMs ?? "",
+          picks: p.attempts.map((a) => `${a.optionLetter}:${a.option}${a.correct ? "✓" : "✗"}@${a.atMs}`).join(" "),
+        });
       }
     } else if (game === "minecart-escape") {
       // One row per word per round attempt: found (with when) or missed.

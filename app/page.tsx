@@ -5,6 +5,7 @@ import { PathfinderSweepGame } from "./games/pathfinder-sweep";
 import { SignalWatchGame } from "./games/signal-watch";
 import { TwinCurrentGame } from "./games/twin-current";
 import { MinecartEscapeGame } from "./games/minecart-escape";
+import { LanternGridGame } from "./games/lantern-grid";
 import { PhoneFrame, PHONE_SCREEN_SIZE } from "./components/PhoneFrame";
 import { GamePicker, type GameEntry } from "./components/GamePicker";
 
@@ -42,6 +43,14 @@ const GAMES: GameEntry[] = [
     art: "/games/minecart-escape/mascot/fumi.png",
     accent: "#ffb02e",
   },
+  {
+    id: "lantern-grid",
+    title: "Lantern Grid",
+    tagline: "Spot the pattern and drag in the missing lantern.",
+    skills: "Logical reasoning · Pattern completion",
+    art: "/games/lantern-grid/lanterns/BS.webp",
+    accent: "#ffc35a",
+  },
 
 ];
 
@@ -76,6 +85,7 @@ export default function Home() {
           {activeGame === "signal-watch" && <SignalWatchGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "twin-current" && <TwinCurrentGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "minecart-escape" && <MinecartEscapeGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
+          {activeGame === "lantern-grid" && <LanternGridGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
         </div>
       </PhoneFrame>
     </main>
