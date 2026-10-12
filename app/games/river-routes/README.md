@@ -13,6 +13,10 @@ played independently. No timer.
 
 ## How it plays
 
+- In Rounds 1–5 the tray pieces are **well scrambled** (a new random order each time a
+  level starts or restarts): the tray never starts with the river's first piece, at
+  most one piece sits in its sheet slot, and it's never the sheet's (river) order. Round 0
+  keeps the sheet order so Fumi can guide the pieces along the path.
 - Drag a piece from the tray onto an empty space. Drop it on another piece to swap;
   drag a placed piece to move it, or back to the tray / tap it to return it.
 - Dropping on Start / End / a boulder flashes red, Fumi explains, the piece goes back.

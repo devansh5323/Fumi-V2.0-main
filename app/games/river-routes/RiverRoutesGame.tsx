@@ -32,8 +32,30 @@ const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.pause, ASSETS.titlePlank
 function newSessionId() {
   return `rr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
-function emptyResult(round: Round): RoundResult {
-  return { round: round.id, practice: round.practice, completed: false, piecesPlaced: 0, piecesReturned: 0, invalidDrops: 0, flowAttempts: 0, failedFlows: 0, livesLeft: LIVES, timeMs: 0 };
+function emptyResult(round: Round, tray: PieceSymbol[]): RoundResult {
+  return { round: round.id, practice: round.practice, completed: false, piecesPlaced: 0, piecesReturned: 0, invalidDrops: 0, flowAttempts: 0, failedFlows: 0, livesLeft: LIVES, timeMs: 0, trayShown: tray.join(" ") };
+}
+// Rounds 1-5 show the tray well scrambled (a little harder). The sheet lists
+// the pieces in river order, so a shuffle must not give that away:
+//  - the tray never starts with the river's first piece,
+//  - at most one piece sits in its sheet slot,
+//  - and it's never the sheet's order.
+// Picked at random from all orders that pass, so it differs every time.
+// (Practice keeps the sheet order: Fumi guides those pieces along the path.)
+function wellMixed(t: PieceSymbol[], sheet: PieceSymbol[]): boolean {
+  const inSlot = t.filter((p, i) => p === sheet[i]).length;
+  return t[0] !== sheet[0] && inSlot <= 1 && t.join("") !== sheet.join("");
+}
+function shuffledTray(tray: PieceSymbol[]): PieceSymbol[] {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const t = [...tray];
+    for (let i = t.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [t[i], t[j]] = [t[j], t[i]];
+    }
+    if (wellMixed(t, tray)) return t;
+  }
+  return [...tray].reverse(); // only for trays too uniform to scramble
 }
 function piecesGrid(round: Round, where: (string | null)[]): (PieceSymbol | null)[][] {
   const g: (PieceSymbol | null)[][] = round.board.map((row) => row.map(() => null));
@@ -64,7 +86,9 @@ function cellsOf(round: Round, kind: string): Cell[] {
 export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
   const [screen, setScreen] = useState<Screen>("loading");
   const [roundIdx, setRoundIdx] = useState(0); // index into ROUNDS (0 = practice)
-  const round = ROUNDS[roundIdx];
+  const [trayShown, setTrayShown] = useState<PieceSymbol[]>(() => ROUNDS[0].tray);
+  // the round as played: the sheet's data with the tray in the shown order
+  const round: Round = useMemo(() => ({ ...ROUNDS[roundIdx], tray: trayShown }), [roundIdx, trayShown]);
   const [where, setWhere] = useState<(string | null)[]>(() => ROUNDS[0].tray.map(() => null));
   const [tutorial, setTutorial] = useState<Tutorial>({ phase: "intro" });
   const [flow, setFlow] = useState<FlowView>(null);
@@ -79,7 +103,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
   const [results, setResults] = useState<RoundResult[]>([]);
   const [roundSeq, setRoundSeq] = useState(0); // remount key for round transitions
 
-  const cur = useRef<RoundResult>(emptyResult(ROUNDS[0]));
+  const cur = useRef<RoundResult>(emptyResult(ROUNDS[0], ROUNDS[0].tray));
   const clock = useRef({ acc: 0, since: null as number | null });
   const startedAt = useRef("");
   const coachSeq = useRef(0);
@@ -158,13 +182,15 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
     (idx: number) => {
       roundToken.current += 1;
       const rd = ROUNDS[idx];
+      const tray = rd.practice ? rd.tray : shuffledTray(rd.tray);
       setRoundIdx(idx);
-      setWhere(rd.tray.map(() => null));
+      setTrayShown(tray);
+      setWhere(tray.map(() => null));
       setFlow(null);
       setFlowing(false);
       setRoundDone(false);
       setRoundSeq((s) => s + 1);
-      cur.current = emptyResult(rd);
+      cur.current = emptyResult(rd, tray);
       setRestarting(false);
       setGameOver(false);
       clock.current = { acc: 0, since: null };
@@ -314,7 +340,9 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
         later(() => {
           if (roundToken.current !== token) return;
           // same level, empty board, every piece back in the tray
-          setWhere(round.tray.map(() => null));
+          const tray = shuffledTray(ROUNDS[round.id].tray); // a fresh shuffle for the retry
+          setTrayShown(tray);
+          setWhere(tray.map(() => null));
           setFlow(null);
           setRestarting(false);
           setRoundSeq((q) => q + 1);

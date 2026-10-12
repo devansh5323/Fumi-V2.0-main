@@ -37,6 +37,7 @@ export type RoundResult = {
   failedFlows: number; // each one costs a life and restarts the level (rounds 1-5)
   livesLeft: number; // game lives left (3 for the whole game) when the round ended / so far
   timeMs: number; // background only, never shown; pauses excluded
+  trayShown: string; // the tray order the child saw (shuffled for rounds 1-5), e.g. "│ ┐ └ ┐ └"
 };
 
 export type SessionMetrics = {
