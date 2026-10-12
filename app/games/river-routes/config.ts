@@ -94,6 +94,8 @@ export const MAIN_ROUNDS = ROUNDS.slice(1);
 // ---------------------------------------------------------------------------
 
 export const SUBTITLE = "Build the river path to carry energy to the end.";
+// The one-liner in Fumi's bubble during Rounds 1-5 (when she has nothing else to say).
+export const GOAL_LINE = "Connect the river from Start to End!";
 export const COPY = {
   practiceIntro: "Hi! Let's build a river. Connect the Start to the End by placing river pieces in the empty spaces.",
   tourStart: "This is the Start. The river begins here. It never moves.",
@@ -107,8 +109,12 @@ export const COPY = {
   roundStart: "Your turn! Use every piece to bring the river to the End.",
   useAllPieces: "Use all the pieces first, then press Send Flow.",
   blocked: { X: "Boulders block the river. Try an empty space.", S: "The Start never moves. Try an empty space.", E: "The End never moves. Try an empty space." },
-  stopped: "Oh! The river stopped here. Try moving some pieces.",
-  unused: "The river reached the End, but every piece must be part of it. Try again!",
+  stopped: "Oh! The river stopped here. Let's try this level again.",
+  unused: "The river reached the End, but every piece must be part of it. Let's try this level again.",
+  // practice can't lose lives or restart, so it keeps the gentler hints
+  stoppedPractice: "Oh! The river stopped here. Try moving some pieces.",
+  unusedPractice: "The river reached the End, but every piece must be part of it. Try again!",
+  restarted: "Here we go again! Bring the river to the End.",
   roundDone: "Great job! You connected the river!",
   gameOver: "Oh oh, looks like the river couldn't reach the end. Let's try again.",
   allDone: "You built every river!",
@@ -131,14 +137,16 @@ export const PRACTICE_STEP_TEXT = [
 export const PLAY_AREA = { width: 390, height: 700 };
 export const SAFE_AREA_TOP = 44;
 export const FLOW_STEP_MS = 190;
-// Lives per level (Rounds 1-5): each wrong Send Flow costs one; losing all
-// three ends the game and Try Again starts again from Round 1.
+// Lives for the whole game (Rounds 1-5): each wrong Send Flow costs one and
+// restarts that level; losing all three ends the game and Try Again starts
+// again from Round 1 with 3 lives.
 export const LIVES = 3;
+export const RESTART_HOLD_MS = 1600; // show where the water stopped before the level resets
+export const AUTO_NEXT_MS = 2200; // a solved level moves on by itself after "Great job!"
 
 export const ASSETS = {
   background: "/games/river-routes/backgrounds/falls.jpg",
   fumi: "/games/river-routes/mascot/fumi.png",
-  back: "/games/river-routes/ui/back.png",
   pause: "/games/river-routes/ui/pause.png",
   titlePlank: "/games/river-routes/ui/title-plank.png",
   sendFlow: "/games/river-routes/ui/send-flow.png",

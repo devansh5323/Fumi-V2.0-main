@@ -17,14 +17,17 @@ played independently. No timer.
   drag a placed piece to move it, or back to the tray / tap it to return it.
 - Dropping on Start / End / a boulder flashes red, Fumi explains, the piece goes back.
 - **Send Flow** lights up once every piece is on the board. The water then runs from
-  the Start cell by cell. Success → "Great job! You connected the river!" and
-  **Next Round**. Failure → the water stops; the spot is ringed in red and Fumi says
+  the Start cell by cell. Success → "Great job! You connected the river!" and the
+  game moves to the next level by itself after ~2 s (or tap **Next Round**). Failure → the water stops; the spot is ringed in red and Fumi says
   "Oh! The river stopped here. Try moving some pieces." (or that every piece must be
   part of the river).
-- **Lives (Rounds 1–5):** 3 hearts per level, shown next to Send Flow. Each wrong
-  flow costs one. Losing all three → Fumi: "Oh oh, looks like the river couldn't
-  reach the end. Let's try again." → **Try Again** starts a fresh game from Round 1
-  (practice is skipped) with 3 hearts. The practice round has no lives.
+- **Lives (Rounds 1–5): 3 for the whole game**, shown top-right. Every wrong Send
+  Flow costs one and **restarts that level**: the water stops where it breaks (red ring,
+  Fumi: "Oh! The river stopped here. Let's try this level again."), then every piece
+  goes back to the tray. Lives carry over between levels. Losing the third → Fumi: "Oh
+  oh, looks like the river couldn't reach the end. Let's try again." → **Try Again**
+  starts a fresh game from Round 1 (practice skipped) with 3 lives. The practice round
+  has no lives and doesn't restart.
 
 ### Round 0 — guided practice
 

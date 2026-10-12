@@ -34,8 +34,8 @@ export type RoundResult = {
   piecesReturned: number; // pieces taken back to the tray
   invalidDrops: number; // drops on Start / End / boulders
   flowAttempts: number; // "Send Flow" presses
-  failedFlows: number; // each one costs a life (rounds 1-5)
-  livesLeft: number; // hearts left when the round ended / so far (3 per round)
+  failedFlows: number; // each one costs a life and restarts the level (rounds 1-5)
+  livesLeft: number; // game lives left (3 for the whole game) when the round ended / so far
   timeMs: number; // background only, never shown; pauses excluded
 };
 
@@ -54,7 +54,7 @@ export type SessionMetrics = {
 
 export type SessionOutcome = {
   sessionId: string;
-  status: "in-progress" | "completed" | "game-over" | "exited"; // game-over = 3 wrong flows in one round
+  status: "in-progress" | "completed" | "game-over" | "exited"; // game-over = 3 wrong flows in the game
   ageBand: AgeBand;
   startedAt: string;
   rounds: RoundResult[];

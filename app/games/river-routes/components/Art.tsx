@@ -62,9 +62,9 @@ export function PieceImg({ symbol, size, style }: { symbol: PieceSymbol; size: n
 }
 
 // "RIVER RELAY" pill: one dot per round — ticked when done, gold = current.
-export function ProgressPill({ total, done, current, practice }: { total: number; done: number; current: number | null; practice: boolean }) {
+export function ProgressPill({ total, done, current, practice, width = 250 }: { total: number; done: number; current: number | null; practice: boolean; width?: number }) {
   return (
-    <div role="progressbar" aria-label="Rounds completed" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} style={{ position: "relative", width: 250, height: 46, borderRadius: 999, background: "linear-gradient(180deg, #2b5f95 0%, #1c4372 100%)", border: "2px solid #8fc3ea", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.25), 0 4px 10px rgba(0,30,70,0.45)" }}>
+    <div role="progressbar" aria-label="Rounds completed" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} style={{ position: "relative", width, height: 46, borderRadius: 999, background: "linear-gradient(180deg, #2b5f95 0%, #1c4372 100%)", border: "2px solid #8fc3ea", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.25), 0 4px 10px rgba(0,30,70,0.45)" }}>
       <div style={{ position: "absolute", left: "50%", top: -9, transform: "translateX(-50%)", padding: "1px 12px", borderRadius: 8, background: "linear-gradient(180deg, #2f6aa3 0%, #1f4a7c 100%)", border: "1.5px solid #8fc3ea", color: "#e8f5ff", fontSize: 10.5, fontWeight: 800, letterSpacing: 1.6, whiteSpace: "nowrap" }}>{practice ? "PRACTICE" : "RIVER RELAY"}</div>
       <div style={{ position: "absolute", left: 22, right: 22, top: 24, height: 3, borderRadius: 2, background: "rgba(160,205,240,0.55)" }} />
       <div style={{ position: "absolute", left: 14, right: 14, top: 13, display: "flex", justifyContent: "space-between" }}>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgeBand, Cell, PieceSymbol, Round, RoundResult, SessionOutcome } from "./types";
-import { ASSETS, COPY, FLOW_STEP_MS, LIVES, MAIN_ROUNDS, PIECE_ART, PLAY_AREA, PRACTICE, PRACTICE_STEP_TEXT, ROUNDS, SAFE_AREA_TOP, SUBTITLE } from "./config";
+import { ASSETS, AUTO_NEXT_MS, COPY, FLOW_STEP_MS, LIVES, RESTART_HOLD_MS, MAIN_ROUNDS, PIECE_ART, PLAY_AREA, PRACTICE, PRACTICE_STEP_TEXT, ROUNDS, SAFE_AREA_TOP, GOAL_LINE } from "./config";
 import { checkFlow } from "./engine/flow";
 import { buildOutcome } from "./engine/session";
 import { saveSession } from "./lib/sessionReporter";
@@ -27,7 +27,7 @@ type Coach = { text: string; tone: "info" | "good" | "bad"; seq: number } | null
 export type RiverRoutesGameProps = { ageBand: AgeBand; onExit: () => void };
 
 const keyOf = ({ r, c }: Cell) => `${r},${c}`;
-const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.back, ASSETS.pause, ASSETS.titlePlank, ASSETS.sendFlow, ...Object.values(ASSETS.tiles), ...new Set(Object.values(PIECE_ART).map((a) => a.src))];
+const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.pause, ASSETS.titlePlank, ASSETS.sendFlow, ...Object.values(ASSETS.tiles), ...new Set(Object.values(PIECE_ART).map((a) => a.src))];
 
 function newSessionId() {
   return `rr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -69,10 +69,11 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
   const [tutorial, setTutorial] = useState<Tutorial>({ phase: "intro" });
   const [flow, setFlow] = useState<FlowView>(null);
   const [flowing, setFlowing] = useState(false);
+  const [restarting, setRestarting] = useState(false); // wrong flow shown, level about to reset
   const [roundDone, setRoundDone] = useState(false);
   const [coach, setCoach] = useState<Coach>(null);
   const [paused, setPaused] = useState(false);
-  const [lives, setLives] = useState(LIVES); // per round, rounds 1-5
+  const [lives, setLives] = useState(LIVES); // for the whole game (rounds 1-5)
   const [gameOver, setGameOver] = useState(false);
   const sessionId = useRef(""); // set when Play is pressed (and again on Play Again)
   const [results, setResults] = useState<RoundResult[]>([]);
@@ -148,8 +149,14 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [persist]);
 
+  // Bumped whenever a level starts (or the game ends). Timers scheduled for
+  // a level (the restart after a wrong flow, the auto-advance after a right
+  // one) check it, so they can never act on a different / already-solved level.
+  const roundToken = useRef(0);
+
   const beginRound = useCallback(
     (idx: number) => {
+      roundToken.current += 1;
       const rd = ROUNDS[idx];
       setRoundIdx(idx);
       setWhere(rd.tray.map(() => null));
@@ -158,7 +165,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
       setRoundDone(false);
       setRoundSeq((s) => s + 1);
       cur.current = emptyResult(rd);
-      setLives(LIVES);
+      setRestarting(false);
       setGameOver(false);
       clock.current = { acc: 0, since: null };
       if (!startedAt.current) startedAt.current = new Date().toISOString();
@@ -176,6 +183,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
   // ---- practice script ---------------------------------------------------------
   const startPractice = () => {
     sessionId.current = newSessionId();
+    setLives(LIVES);
     setScreen("game");
     beginRound(0);
     setTutorial({ phase: "tour", step: 0 });
@@ -243,7 +251,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
 
   // ---- send flow --------------------------------------------------------------
   const allPlaced = where.every((w) => w !== null);
-  const canFlow = allPlaced && !flowing && !roundDone && !paused && (!round.practice || tutorial?.phase === "flow");
+  const canFlow = allPlaced && !flowing && !restarting && !roundDone && !paused && (!round.practice || tutorial?.phase === "flow");
 
   const sendFlow = () => {
     if (!allPlaced) {
@@ -256,12 +264,14 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
     // validated against the sheet's solution as well as by following the water
     const check = raw.ok && !matchesSolution(round, grid) ? { ...raw, ok: false } : raw;
     const r = cur.current;
+    const token = roundToken.current;
     r.flowAttempts += 1;
     setCoach(null);
     setFlowing(true);
     setFlow({ check, lit: 0 });
     check.path.forEach((_, i) => later(() => setFlow({ check, lit: i + 1 }), (i + 1) * FLOW_STEP_MS));
     later(() => {
+      if (roundToken.current !== token) return;
       setFlowing(false);
       if (check.ok) {
         runClock(false);
@@ -273,24 +283,43 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
         resultsRef.current = all;
         persist(roundIdx === ROUNDS.length - 1 ? "completed" : "in-progress");
         if (round.practice) setTutorial({ phase: "done" });
-        else say(COPY.roundDone, "good");
+        else {
+          say(COPY.roundDone, "good");
+          const from = roundIdx;
+          later(() => {
+            if (roundToken.current === token) advance(from); // unless Next Round was already tapped
+          }, AUTO_NEXT_MS);
+        }
       } else {
         r.failedFlows += 1;
+        if (round.practice) {
+          say(check.failure?.kind === "unused" ? COPY.unusedPractice : COPY.stoppedPractice, "bad");
+          persist("in-progress");
+          return;
+        }
+        // a wrong flow costs a life (3 for the whole game) and restarts the level
         say(check.failure?.kind === "unused" ? COPY.unused : COPY.stopped, "bad");
-        if (!round.practice) {
-          // a wrong flow costs a life; the third ends the game
-          const left = lives - 1;
-          r.livesLeft = left;
-          setLives(left);
-          if (left <= 0) {
-            runClock(false);
-            r.timeMs = roundTime();
-            persist("game-over");
-            later(() => setGameOver(true), 1400);
-            return;
-          }
+        const left = lives - 1;
+        r.livesLeft = left;
+        setLives(left);
+        setRestarting(true);
+        if (left <= 0) {
+          runClock(false);
+          r.timeMs = roundTime();
+          persist("game-over");
+          later(() => setGameOver(true), 1400);
+          return;
         }
         persist("in-progress");
+        later(() => {
+          if (roundToken.current !== token) return;
+          // same level, empty board, every piece back in the tray
+          setWhere(round.tray.map(() => null));
+          setFlow(null);
+          setRestarting(false);
+          setRoundSeq((q) => q + 1);
+          say(COPY.restarted);
+        }, RESTART_HOLD_MS);
       }
     }, (check.path.length + 1) * FLOW_STEP_MS + 150);
   };
@@ -298,16 +327,21 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
   // decoy step -> flow step
   const nextFromDecoys = () => setTutorial({ phase: "flow" });
 
-  const goNext = () => {
-    if (roundIdx < ROUNDS.length - 1) {
+  const advance = (from: number) => {
+    if (from < ROUNDS.length - 1) {
       setCoach(null);
-      beginRound(roundIdx + 1);
-    } else setScreen("final");
+      beginRound(from + 1);
+    } else {
+      roundToken.current += 1;
+      setScreen("final");
+    }
   };
+  const goNext = () => advance(roundIdx);
 
   // after 3 wrong flows: a fresh game from Round 1 (practice already done)
   const tryAgain = () => {
     sessionId.current = newSessionId();
+    setLives(LIVES);
     startedAt.current = "";
     setResults([]);
     resultsRef.current = [];
@@ -317,6 +351,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
 
   const playAgain = () => {
     sessionId.current = newSessionId();
+    setLives(LIVES);
     startedAt.current = "";
     setResults([]);
     resultsRef.current = [];
@@ -358,7 +393,9 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
       coachTone = coach?.tone === "bad" ? "bad" : "info";
     }
   }
-  if (flowing && !round.practice) coachText = null;
+  if (flowing && !round.practice) coachText = "Watch the water flow…";
+  // rounds 1-5: when Fumi has nothing else to say, the bubble shows the goal
+  if (!coachText && !round.practice) coachText = GOAL_LINE;
 
   const ringCells: Cell[] =
     round.practice && tutorial?.phase === "tour"
@@ -367,7 +404,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
         ? round.board.flatMap((row, r) => row.flatMap((k, c) => (k === "." && !round.solution[r][c] ? [{ r, c }] : [])))
         : [];
   const trayRing = round.practice && tutorial?.phase === "tour" && TOUR[tutorial.step].tray;
-  const locked = paused || flowing || roundDone || gameOver || (round.practice && tutorial?.phase !== "build" && tutorial?.phase !== "flow");
+  const locked = paused || flowing || restarting || roundDone || gameOver || (round.practice && tutorial?.phase !== "build" && tutorial?.phase !== "flow");
   const overlay = round.practice && tutorial?.phase === "done";
   const mainDone = results.filter((r) => !r.practice && r.completed).length;
 
@@ -386,20 +423,22 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
 
       {screen === "game" && (
         <>
-          {/* ---- header ---- */}
+          {/* ---- header: pause (left), round progress, lives (right, rounds 1-5) ---- */}
           <div style={{ position: "absolute", left: 10, top: SAFE_AREA_TOP + 4 }}>
-            <ImageButton src={ASSETS.back} label="Back" onClick={() => setPause(true)} />
-          </div>
-          <div style={{ position: "absolute", left: 70, top: SAFE_AREA_TOP + 6 }}>
-            <ProgressPill total={MAIN_ROUNDS.length} done={mainDone} current={round.practice ? null : roundIdx - 1} practice={round.practice} />
-          </div>
-          <div style={{ position: "absolute", right: 10, top: SAFE_AREA_TOP + 4 }}>
             <ImageButton src={ASSETS.pause} label="Pause" onClick={() => setPause(true)} />
           </div>
+          <div style={{ position: "absolute", left: 64, top: SAFE_AREA_TOP + 6 }}>
+            <ProgressPill total={MAIN_ROUNDS.length} done={mainDone} current={round.practice ? null : roundIdx - 1} practice={round.practice} width={round.practice ? 300 : 238} />
+          </div>
+          {!round.practice && (
+            <div style={{ position: "absolute", right: 8, top: SAFE_AREA_TOP + 13, padding: "4px 6px", borderRadius: 12, background: "linear-gradient(180deg, #2b5f95 0%, #1c4372 100%)", border: "2px solid #8fc3ea", boxShadow: "0 4px 10px rgba(0,30,70,0.45)" }}>
+              <Hearts lives={lives} total={LIVES} size={14} />
+            </div>
+          )}
 
-          {/* ---- title, or Fumi's coaching ---- */}
+          {/* ---- Fumi + her bubble: the one-line goal, or what she has to say ---- */}
           <div style={{ position: "absolute", left: 0, right: 0, top: 98, height: 86 }}>
-            {coachText ? (
+            {coachText && (
               <div key={coachText} style={{ position: "absolute", inset: "0 10px", display: "flex", alignItems: "center", gap: 6, animation: "bubble-pop 320ms var(--ease-pop) both" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={ASSETS.fumi} alt="Fumi" style={{ width: 70, height: "auto", flexShrink: 0, filter: "drop-shadow(0 4px 6px rgba(0,30,70,0.35))", animation: coachTone === "good" ? "lg-cheer 700ms ease-in-out" : coachTone === "bad" ? "lg-shake 450ms ease-in-out" : "float-y 3.2s ease-in-out infinite" }} />
@@ -412,12 +451,6 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
                   )}
                   <span style={{ position: "absolute", left: -9, top: "50%", marginTop: -8, width: 14, height: 14, background: "#fff", transform: "rotate(45deg)", borderLeft: `2.5px solid ${coachTone === "bad" ? "#ff8a7a" : coachTone === "good" ? "#7fdc8c" : "#8fc3ea"}`, borderBottom: `2.5px solid ${coachTone === "bad" ? "#ff8a7a" : coachTone === "good" ? "#7fdc8c" : "#8fc3ea"}` }} />
                 </div>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", animation: "bubble-pop 320ms var(--ease-pop) both" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={ASSETS.titlePlank} alt="River Routes" style={{ width: 236, height: "auto", filter: "drop-shadow(0 5px 8px rgba(0,30,70,0.35))" }} />
-                <div style={{ marginTop: 2, fontSize: 12.5, fontWeight: 800, color: NAVY, textShadow: "0 0 6px rgba(255,255,255,0.9), 0 0 2px #fff" }}>{SUBTITLE}</div>
               </div>
             )}
           </div>
@@ -441,13 +474,6 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
               </div>
             )}
           </div>
-
-          {/* ---- lives (rounds 1-5), next to the button that can cost one ---- */}
-          {!round.practice && (
-            <div style={{ position: "absolute", right: 6, top: 642, padding: "4px 5px", borderRadius: 11, background: "linear-gradient(180deg, #2b5f95 0%, #1c4372 100%)", border: "2px solid #8fc3ea", boxShadow: "0 4px 10px rgba(0,30,70,0.45)" }}>
-              <Hearts lives={lives} total={LIVES} size={13} />
-            </div>
-          )}
 
           {/* ---- out of lives ---- */}
           {gameOver && (
