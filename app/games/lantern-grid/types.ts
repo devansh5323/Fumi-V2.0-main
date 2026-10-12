@@ -38,8 +38,12 @@ export type PuzzleResult = {
 
 export type SessionMetrics = {
   totalPuzzles: number;
+  puzzlesAttempted: number; // puzzles with at least one drop
   puzzlesSolved: number;
   incorrectAttempts: number;
+  // Average time per drop: from the puzzle appearing (or the previous drop
+  // on the same puzzle) to the drop, pauses excluded. null before any drop.
+  avgResponseTimeMs: number | null;
   livesRemaining: number;
   firstTryCorrect: number; // puzzles solved with no wrong attempt
   accuracyPct: number; // correct drops / all drops

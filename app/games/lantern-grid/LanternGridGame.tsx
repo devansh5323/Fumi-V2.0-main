@@ -5,7 +5,7 @@ import type { AgeBand, AttemptRecord, LanternCode, PuzzleResult, SessionOutcome 
 import { ASSETS, COMPLETE_LINE, FUMI_INTRO, GAME_OVER_LINE, INSTRUCTION, LANTERNS, LIVES, OPTION_LETTERS, PLAY_AREA, PUZZLES, RETURN_MS, SAFE_AREA_TOP, SOLVED_HOLD_MS, WRONG_HOLD_MS } from "./config";
 import { buildOutcome } from "./engine/session";
 import { saveSession } from "./lib/sessionReporter";
-import { GroveBackdrop, Hearts, ImageButton, INK, Parchment, Plank, ProgressBar, TEXT_DISPLAY, WOOD_DARK, WOOD_EDGE, playButtonStyle, secondaryButtonStyle, speechStyle } from "./components/Art";
+import { GroveBackdrop, Hearts, ImageButton, INK, Parchment, ProgressBar, TEXT_DISPLAY, WOOD_DARK, WOOD_EDGE, playButtonStyle, secondaryButtonStyle, speechStyle } from "./components/Art";
 import { PuzzleStage, type DropResult } from "./components/PuzzleStage";
 import { Typewriter } from "../../components/Typewriter";
 
@@ -25,7 +25,7 @@ function newSessionId(): string {
   return `lg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.back, ASSETS.pause, ASSETS.progressLantern, ...Object.values(LANTERNS).map((l) => l.src)];
+const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.pause, ASSETS.progressLantern, ...Object.values(LANTERNS).map((l) => l.src)];
 
 export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
   const [screen, setScreen] = useState<Screen>("loading");
@@ -220,25 +220,21 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
         </div>
       )}
 
-      {/* ---- header: back, lantern progression, pause, title + instruction, lives ---- */}
+      {/* ---- header: pause, lantern progression, lives; then Fumi + instruction ---- */}
       {playing && (
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", animation: "lg-header-in 600ms ease-out 250ms both" }}>
           <div style={{ position: "absolute", left: 8, top: SAFE_AREA_TOP + 4, pointerEvents: "auto" }}>
-            <ImageButton src={ASSETS.back} label="Back" onClick={() => setPause(true)} />
-          </div>
-          <div style={{ position: "absolute", left: 54, top: SAFE_AREA_TOP + 4 }}>
-            <ProgressBar lit={lit} width={282} />
-          </div>
-          <div style={{ position: "absolute", right: 8, top: SAFE_AREA_TOP + 4, pointerEvents: "auto" }}>
             <ImageButton src={ASSETS.pause} label="Pause" onClick={() => setPause(true)} />
           </div>
-          <Parchment style={{ position: "absolute", left: 120, right: 8, top: 108, height: 92 }}>
-            <div style={{ padding: "16px 12px 6px", textAlign: "center", color: INK, fontWeight: 700, fontSize: 12.5, lineHeight: 1.35 }}>{INSTRUCTION}</div>
-          </Parchment>
-          <Plank style={{ position: "absolute", left: 134, top: 92 }}>LANTERN GRID</Plank>
-          <div style={{ position: "absolute", right: 12, top: 94, padding: "3px 7px", borderRadius: 10, background: WOOD_DARK, border: `2px solid ${WOOD_EDGE}`, boxShadow: "0 3px 8px rgba(0,0,0,0.5)" }}>
+          <div style={{ position: "absolute", left: 54, top: SAFE_AREA_TOP + 4 }}>
+            <ProgressBar lit={lit} width={252} />
+          </div>
+          <div style={{ position: "absolute", right: 8, top: SAFE_AREA_TOP + 9, padding: "4px 7px", borderRadius: 10, background: WOOD_DARK, border: `2px solid ${WOOD_EDGE}`, boxShadow: "0 3px 8px rgba(0,0,0,0.5)" }}>
             <Hearts lives={lives} size={15} />
           </div>
+          <Parchment style={{ position: "absolute", left: 92, right: 10, top: 104 }}>
+            <div style={{ padding: "9px 10px", textAlign: "center", color: INK, fontWeight: 700, fontSize: 11.5, lineHeight: 1.35 }}>{INSTRUCTION}</div>
+          </Parchment>
         </div>
       )}
 
@@ -253,7 +249,7 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
         <>
           <div style={{ position: "absolute", top: 348, left: 22, right: 22, animation: "bubble-pop 450ms var(--ease-pop) 300ms both" }}>
             <div style={{ ...speechStyle, minHeight: 92 }}>
-              <Typewriter text={FUMI_INTRO} onDone={() => setIntroDone(true)} />
+              <Typewriter text={FUMI_INTRO} onDone={() => setIntroDone(true)} style={{ whiteSpace: "pre-line" }} />
               <BubbleTail />
             </div>
           </div>
@@ -312,15 +308,15 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
 
 function FumiGuide({ spot, mood, celebrate }: { spot: FumiSpot; mood: { kind: "cheer" | "oops" | "idle"; key: number }; celebrate: boolean }) {
   const center = spot === "center";
-  const w = center ? 210 : 112;
+  const w = center ? 210 : 82;
   return (
     <div
       aria-hidden
       style={{
         position: "absolute",
         zIndex: 20,
-        left: center ? (PLAY_AREA.width - w) / 2 : 2,
-        top: center ? 128 : 94,
+        left: center ? (PLAY_AREA.width - w) / 2 : 4,
+        top: center ? 128 : 102,
         width: w,
         transition: "left 750ms cubic-bezier(0.5,0,0.2,1), top 750ms cubic-bezier(0.5,0,0.2,1), width 750ms cubic-bezier(0.5,0,0.2,1)",
         pointerEvents: "none",

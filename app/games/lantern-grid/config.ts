@@ -73,8 +73,8 @@ export const OPTION_LETTERS = ["A", "B", "C", "D"];
 
 // From the sheet's "Instructions" note.
 export const INSTRUCTION = "Study the lantern grid and spot the pattern. Drag the lantern that correctly fills the missing space.";
-// Fumi's welcome on the first screen.
-export const FUMI_INTRO = "Hi, I'm Fumi! Study the lantern grid and spot the pattern. Then drag the lantern that fills the missing space marked with ?";
+// Fumi's instruction on the first screen (the sheet's two lines).
+export const FUMI_INTRO = "Study the lantern grid and spot the pattern.\nDrag the lantern that correctly fills the missing space.";
 export const GAME_OVER_LINE = "Oh oh, looks like you weren't able to power the grid up. Let's try again.";
 export const COMPLETE_LINE = "The Lantern Grid is powered up!";
 
@@ -94,7 +94,6 @@ export const SAFE_AREA_TOP = 44;
 export const ASSETS = {
   background: "/games/lantern-grid/backgrounds/grove.jpg",
   fumi: "/games/lantern-grid/mascot/fumi.png",
-  back: "/games/lantern-grid/ui/back.png",
   pause: "/games/lantern-grid/ui/pause.png",
   progressLantern: "/games/lantern-grid/ui/progress-lantern.png",
 };

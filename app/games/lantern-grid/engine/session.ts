@@ -5,10 +5,15 @@ export function computeMetrics(puzzles: PuzzleResult[], livesRemaining: number, 
   const puzzlesSolved = puzzles.filter((p) => p.solved).length;
   const drops = puzzles.reduce((s, p) => s + p.attempts.length, 0);
   const incorrectAttempts = puzzles.reduce((s, p) => s + p.wrongAttempts, 0);
+  // attempt.atMs is measured from the puzzle appearing, so each response
+  // time is the gap since the previous drop on that puzzle.
+  const responseTimes = puzzles.flatMap((p) => p.attempts.map((a, i) => a.atMs - (i > 0 ? p.attempts[i - 1].atMs : 0)));
   return {
     totalPuzzles: PUZZLES.length,
+    puzzlesAttempted: puzzles.filter((p) => p.attempts.length > 0).length,
     puzzlesSolved,
     incorrectAttempts,
+    avgResponseTimeMs: responseTimes.length ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : null,
     livesRemaining,
     firstTryCorrect: puzzles.filter((p) => p.solved && p.wrongAttempts === 0).length,
     accuracyPct: drops === 0 ? 0 : Math.round(((drops - incorrectAttempts) / drops) * 1000) / 10,

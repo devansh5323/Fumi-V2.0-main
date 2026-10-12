@@ -36,7 +36,9 @@ options). The legend (`LANTERNS`) maps codes/names to artwork in
 
 `SessionOutcome` (see `types.ts`): per puzzle, every drop (option, right/wrong, time
 since the puzzle appeared), wrong attempts and time to solve; plus totals:
-puzzles solved, incorrect attempts, lives remaining, and **background timing**:
+puzzles attempted (at least one drop), puzzles solved, incorrect attempts, lives remaining,
+`avgResponseTimeMs` (average time per drop, measured from the puzzle appearing or the
+previous drop on it, pauses excluded), and **background timing**:
 `completionDurationMs` from the first puzzle becoming playable until the tenth is
 solved (pauses excluded; `null` if not completed), `elapsedActiveMs`, `elapsedWallMs`.
 None of the timing is shown in the game.

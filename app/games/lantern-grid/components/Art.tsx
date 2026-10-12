@@ -43,7 +43,7 @@ export function GroveBackdrop({ dim = 0 }: { dim?: number }) {
 }
 
 // "LANTERN GRID" style wooden plank.
-export function Plank({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+export function Plank({ children, style, fontSize = 15 }: { children: React.ReactNode; style?: React.CSSProperties; fontSize?: number }) {
   return (
     <div
       style={{
@@ -55,7 +55,7 @@ export function Plank({ children, style }: { children: React.ReactNode; style?: 
         ...style,
       }}
     >
-      <div style={{ padding: "1px 12px", borderRadius: 4, background: PARCHMENT, color: INK, fontFamily: TEXT_DISPLAY, fontWeight: 800, fontSize: 15, letterSpacing: 0.6, whiteSpace: "nowrap", textAlign: "center" }}>{children}</div>
+      <div style={{ padding: "1px 12px", borderRadius: 4, background: PARCHMENT, color: INK, fontFamily: TEXT_DISPLAY, fontWeight: 800, fontSize, letterSpacing: 0.6, whiteSpace: "nowrap", textAlign: "center" }}>{children}</div>
     </div>
   );
 }
