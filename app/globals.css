@@ -632,6 +632,62 @@ button {
   70% { opacity: 0.85; transform: translate(-6px, -24px); }
 }
 
+/* River Routes */
+@keyframes rr-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  50% { opacity: 0.9; transform: scale(1); }
+}
+
+@keyframes rr-drop {
+  0% { transform: scale(1.18); opacity: 0.6; }
+  60% { transform: scale(0.96); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes rr-lit {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rr-burst {
+  0% { opacity: 0; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rr-invalid {
+  0% { opacity: 1; transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-3px); }
+  100% { opacity: 0; transform: translateX(0); }
+}
+
+@keyframes rr-nudge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes rr-cta-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes rr-round-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ghost hand: pick up the piece, carry it to the glowing space, let go */
+@keyframes rr-ghost {
+  0% { transform: translate(var(--fx), var(--fy)) scale(1); opacity: 0; }
+  10% { transform: translate(var(--fx), var(--fy)) scale(1); opacity: 1; }
+  22% { transform: translate(var(--fx), var(--fy)) scale(1.08); opacity: 1; }
+  72% { transform: translate(var(--tx), var(--ty)) scale(1.08); opacity: 1; }
+  82% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

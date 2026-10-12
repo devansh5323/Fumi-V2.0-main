@@ -6,6 +6,7 @@ import { SignalWatchGame } from "./games/signal-watch";
 import { TwinCurrentGame } from "./games/twin-current";
 import { MinecartEscapeGame } from "./games/minecart-escape";
 import { LanternGridGame } from "./games/lantern-grid";
+import { RiverRoutesGame } from "./games/river-routes";
 import { PhoneFrame, PHONE_SCREEN_SIZE } from "./components/PhoneFrame";
 import { GamePicker, type GameEntry } from "./components/GamePicker";
 
@@ -51,6 +52,14 @@ const GAMES: GameEntry[] = [
     art: "/games/lantern-grid/lanterns/BS.webp",
     accent: "#ffc35a",
   },
+  {
+    id: "river-routes",
+    title: "River Routes",
+    tagline: "Place the river pieces to carry the water from Start to End.",
+    skills: "Planning · Spatial reasoning",
+    art: "/games/river-routes/tiles/start.webp",
+    accent: "#4fc3ff",
+  },
 
 ];
 
@@ -86,6 +95,7 @@ export default function Home() {
           {activeGame === "twin-current" && <TwinCurrentGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "minecart-escape" && <MinecartEscapeGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "lantern-grid" && <LanternGridGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
+          {activeGame === "river-routes" && <RiverRoutesGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
         </div>
       </PhoneFrame>
     </main>

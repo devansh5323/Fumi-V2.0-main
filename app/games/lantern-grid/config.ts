@@ -96,4 +96,5 @@ export const ASSETS = {
   fumi: "/games/lantern-grid/mascot/fumi.png",
   pause: "/games/lantern-grid/ui/pause.png",
   progressLantern: "/games/lantern-grid/ui/progress-lantern.png",
+  titlePlank: "/games/lantern-grid/ui/title-plank.png", // blank wooden sign (shared art with Minecart Escape)
 };

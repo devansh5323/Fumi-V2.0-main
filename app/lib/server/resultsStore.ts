@@ -6,7 +6,7 @@ import path from "node:path";
 // appended as one JSON line to data/game-results/<game>.jsonl in the
 // project folder. Read it back through /api/results/<game> (JSON or CSV).
 
-export const GAMES = ["signal-watch", "twin-current", "minecart-escape", "lantern-grid"] as const;
+export const GAMES = ["signal-watch", "twin-current", "minecart-escape", "lantern-grid", "river-routes"] as const;
 export type GameId = (typeof GAMES)[number];
 
 export function isGameId(value: string): value is GameId {
@@ -116,7 +116,7 @@ export function sessionRows(sessions: StoredSession[]): Record<string, unknown>[
 }
 
 // One row per trial: each signal (Signal Watch), each round (Twin Current) or
-// each word per round (Minecart Escape) or each puzzle (Lantern Grid).
+// each word per round (Minecart Escape) each puzzle (Lantern Grid) or each round (River Routes).
 export function trialRows(game: GameId, sessions: StoredSession[]): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
   for (const s of sessions) {
@@ -127,6 +127,10 @@ export function trialRows(game: GameId, sessions: StoredSession[]): Record<strin
         for (const sig of st.signals ?? []) rows.push({ ...base, rowType: "signal", ...flatten(sig) });
         for (const tap of st.strayTaps ?? []) rows.push({ ...base, rowType: "stray-tap", ...flatten(tap) });
       }
+    } else if (game === "river-routes") {
+      // One row per round played (Round 0 = practice).
+      const o = s.outcome as { sessionId?: string; status?: string; rounds?: Record<string, unknown>[] };
+      for (const r of o.rounds ?? []) rows.push({ ...base, rowType: "round", gameSessionId: o.sessionId ?? "", sessionStatus: o.status ?? "", ...flatten(r) });
     } else if (game === "lantern-grid") {
       // One row per puzzle reached: solved?, wrong drops, background time.
       const o = s.outcome as { sessionId?: string; status?: string; puzzles?: { puzzle: number; answer: string; solved: boolean; wrongAttempts: number; timeToSolveMs: number | null; attempts: { optionLetter: string; option: string; correct: boolean; atMs: number }[] }[] };

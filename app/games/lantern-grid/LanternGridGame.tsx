@@ -7,14 +7,13 @@ import { buildOutcome } from "./engine/session";
 import { saveSession } from "./lib/sessionReporter";
 import { GroveBackdrop, Hearts, ImageButton, INK, Parchment, ProgressBar, TEXT_DISPLAY, WOOD_DARK, WOOD_EDGE, playButtonStyle, secondaryButtonStyle, speechStyle } from "./components/Art";
 import { PuzzleStage, type DropResult } from "./components/PuzzleStage";
-import { Typewriter } from "../../components/Typewriter";
 
 // loading -> intro (Fumi centre-stage explains) -> play: 10 puzzles in a
 // row, each sliding in from the right when the last is solved (no round
 // labels, no visible timer) -> complete | gameover (3 wrong drops).
 // "Try Again" restarts from puzzle 1 with 3 lives and a fresh session.
 type Screen = "loading" | "intro" | "play" | "gameover" | "complete";
-type FumiSpot = "center" | "top";
+type FumiSpot = "home" | "center" | "top";
 
 export type LanternGridGameProps = {
   ageBand: AgeBand;
@@ -25,13 +24,12 @@ function newSessionId(): string {
   return `lg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.pause, ASSETS.progressLantern, ...Object.values(LANTERNS).map((l) => l.src)];
+const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.titlePlank, ASSETS.pause, ASSETS.progressLantern, ...Object.values(LANTERNS).map((l) => l.src)];
 
 export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
   const [screen, setScreen] = useState<Screen>("loading");
-  const [fumiSpot, setFumiSpot] = useState<FumiSpot>("center");
+  const [fumiSpot, setFumiSpot] = useState<FumiSpot>("home");
   const [fumiMood, setFumiMood] = useState<{ kind: "cheer" | "oops" | "idle"; key: number }>({ kind: "idle", key: 0 });
-  const [introDone, setIntroDone] = useState(false);
 
   const [sessionId, setSessionId] = useState(newSessionId);
   const [index, setIndex] = useState(0);
@@ -245,19 +243,25 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
       {/* ---- Fumi: centre stage for intro / endings, top-left guide while playing ---- */}
       {screen !== "loading" && <FumiGuide spot={fumiSpot} mood={fumiMood} celebrate={screen === "complete"} />}
 
+      {/* ---- home screen: title sign, Fumi with how to play, Play ---- */}
       {screen === "intro" && (
         <>
-          <div style={{ position: "absolute", top: 348, left: 22, right: 22, animation: "bubble-pop 450ms var(--ease-pop) 300ms both" }}>
-            <div style={{ ...speechStyle, minHeight: 92 }}>
-              <Typewriter text={FUMI_INTRO} onDone={() => setIntroDone(true)} style={{ whiteSpace: "pre-line" }} />
+          <div style={{ position: "absolute", top: SAFE_AREA_TOP + 22, left: 0, right: 0, display: "flex", justifyContent: "center", animation: "bubble-pop 500ms var(--ease-pop) both" }}>
+            <div style={{ position: "relative", width: 350 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={ASSETS.titlePlank} alt="" style={{ width: 350, height: "auto", display: "block", filter: "drop-shadow(0 8px 14px rgba(0,0,0,0.5))" }} />
+              <h1 style={titleSignText}>Lantern Grid</h1>
+            </div>
+          </div>
+          <div style={{ position: "absolute", top: 390, left: 24, right: 24, animation: "bubble-pop 450ms var(--ease-pop) 200ms both" }}>
+            <div role="status" style={{ ...speechStyle, whiteSpace: "pre-line", fontWeight: 800 }}>
+              {FUMI_INTRO}
               <BubbleTail />
             </div>
           </div>
-          {introDone && (
-            <button type="button" className="tap-scale" onClick={startSession} style={{ ...playButtonStyle, position: "absolute", bottom: 70, left: 80, right: 80, animation: "bubble-pop 420ms var(--ease-pop) both" }}>
-              Let&apos;s Go!
-            </button>
-          )}
+          <button type="button" className="tap-scale" onClick={startSession} style={{ ...playButtonStyle, position: "absolute", bottom: 60, left: "50%", marginLeft: -110, width: 220, fontSize: 28 }}>
+            Play
+          </button>
         </>
       )}
 
@@ -307,8 +311,8 @@ export function LanternGridGame({ ageBand, onExit }: LanternGridGameProps) {
 // ---------------------------------------------------------------------------
 
 function FumiGuide({ spot, mood, celebrate }: { spot: FumiSpot; mood: { kind: "cheer" | "oops" | "idle"; key: number }; celebrate: boolean }) {
-  const center = spot === "center";
-  const w = center ? 210 : 82;
+  const center = spot !== "top";
+  const w = spot === "home" ? 180 : center ? 210 : 82;
   return (
     <div
       aria-hidden
@@ -316,7 +320,7 @@ function FumiGuide({ spot, mood, celebrate }: { spot: FumiSpot; mood: { kind: "c
         position: "absolute",
         zIndex: 20,
         left: center ? (PLAY_AREA.width - w) / 2 : 4,
-        top: center ? 128 : 102,
+        top: spot === "home" ? 200 : center ? 128 : 102,
         width: w,
         transition: "left 750ms cubic-bezier(0.5,0,0.2,1), top 750ms cubic-bezier(0.5,0,0.2,1), width 750ms cubic-bezier(0.5,0,0.2,1)",
         pointerEvents: "none",
@@ -399,6 +403,24 @@ function CompleteOverlay({ outcome, lit, onPlayAgain, onFinish }: { outcome: Ses
     </>
   );
 }
+
+const titleSignText: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  margin: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  paddingBottom: 6,
+  fontFamily: TEXT_DISPLAY,
+  fontSize: 38,
+  fontWeight: 800,
+  color: "#fff4dc",
+  WebkitTextStroke: "2px #4a2508",
+  paintOrder: "stroke fill",
+  textShadow: "0 3px 0 #4a2508, 0 5px 8px rgba(30,12,0,0.55)",
+  transform: "rotate(-2deg)",
+};
 
 const sceneStyle: React.CSSProperties = {
   position: "relative",
