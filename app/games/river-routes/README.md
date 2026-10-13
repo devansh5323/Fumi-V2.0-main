@@ -1,7 +1,7 @@
 # River Routes — path planning
 
 Drag river pieces from the tray into the empty spaces so the water runs from the
-Start tile to the End tile. Round 0 is a guided practice with Fumi; Rounds 1–5 are
+Start tile to the End tile. Round 0 is a guided **Trial Round** with Fumi; Rounds 1–5 are
 played independently. No timer.
 
 ## Rules (from the sheet)
@@ -12,6 +12,8 @@ played independently. No timer.
 - Each round has exactly one solution (checked: see "Data" below).
 
 ## How it plays
+
+- Buttons (Play, Next, Send Flow, Next Round, Try Again…) are simple flat text buttons.
 
 - In Rounds 1–5 the tray pieces are **well scrambled** (a new random order each time a
   level starts or restarts): the tray never starts with the river's first piece, at
@@ -33,7 +35,7 @@ played independently. No timer.
   starts a fresh game from Round 1 (practice skipped) with 3 lives. The practice round
   has no lives and doesn't restart.
 
-### Round 0 — guided practice
+### Round 0 — Trial Round (guided)
 
 1. Fumi introduces the goal → **Start Practice**.
 2. Tour (with spotlight): the Start, the End, the boulders, the tray (pieces can't be
@@ -69,6 +71,6 @@ Send Flow attempts / failures, completed, and background time (never shown).
 
 ## Art
 
-Tiles, river pieces, the title plank, Send Flow, back and pause buttons and the
+Tiles, river pieces, the title plank, the pause button and the
 background are cut from the design reference (upscaled). ┌ and ┘ aren't used by the
 sheet; if added they're drawn as mirrored ┐ / └.

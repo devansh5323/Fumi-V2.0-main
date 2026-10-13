@@ -27,7 +27,7 @@ type Coach = { text: string; tone: "info" | "good" | "bad"; seq: number } | null
 export type RiverRoutesGameProps = { ageBand: AgeBand; onExit: () => void };
 
 const keyOf = ({ r, c }: Cell) => `${r},${c}`;
-const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.pause, ASSETS.titlePlank, ASSETS.sendFlow, ...Object.values(ASSETS.tiles), ...new Set(Object.values(PIECE_ART).map((a) => a.src))];
+const PRELOAD = [ASSETS.background, ASSETS.fumi, ASSETS.pause, ASSETS.titlePlank, ...Object.values(ASSETS.tiles), ...new Set(Object.values(PIECE_ART).map((a) => a.src))];
 
 function newSessionId() {
   return `rr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -473,7 +473,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
                 <div role="status" style={{ ...bubbleStyle, flex: 1, padding: "8px 12px", fontSize: coachText.length > 100 ? 12.5 : 13.5, borderColor: coachTone === "bad" ? "#ff8a7a" : coachTone === "good" ? "#7fdc8c" : "#8fc3ea", display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ flex: 1 }}>{coachText}</span>
                   {coachAction && (
-                    <button type="button" className="tap-scale" onClick={coachAction.onClick} style={{ ...ctaStyle, minHeight: 34, fontSize: 14, padding: "0 12px", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.6), 0 3px 0 #b77a08", flexShrink: 0 }}>
+                    <button type="button" className="tap-scale" onClick={coachAction.onClick} style={{ ...ctaStyle, minHeight: 34, fontSize: 14, padding: "0 12px", borderRadius: 10, boxShadow: "none", flexShrink: 0 }}>
                       {coachAction.label}
                     </button>
                   )}
@@ -497,8 +497,8 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
               </button>
             ) : (
               <div style={{ position: "relative" }}>
-                <SendFlowButton onClick={sendFlow} enabled={canFlow && !gameOver} glow={canFlow && !gameOver} />
-                {round.practice && tutorial?.phase === "flow" && !flowing && <div aria-hidden style={{ position: "absolute", inset: -6, borderRadius: 999, border: "3px solid #ffe066", boxShadow: "0 0 16px 4px rgba(255,224,102,0.8)", animation: "glow-pulse 1.2s ease-in-out infinite", pointerEvents: "none" }} />}
+                <SendFlowButton onClick={sendFlow} enabled={canFlow && !gameOver} />
+                {round.practice && tutorial?.phase === "flow" && !flowing && <div aria-hidden style={{ position: "absolute", inset: -6, borderRadius: 18, border: "3px solid #ffe066", boxShadow: "0 0 16px 4px rgba(255,224,102,0.8)", animation: "glow-pulse 1.2s ease-in-out infinite", pointerEvents: "none" }} />}
               </div>
             )}
           </div>
@@ -513,7 +513,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
                 <span style={{ position: "absolute", left: "50%", top: -9, marginLeft: -8, width: 14, height: 14, background: "#fff", transform: "rotate(45deg)", borderLeft: "2.5px solid #8fc3ea", borderTop: "2.5px solid #8fc3ea" }} />
               </div>
               <Hearts lives={0} total={LIVES} size={22} />
-              <button type="button" className="tap-scale" onClick={tryAgain} style={{ ...ctaStyle, width: 230, fontSize: 23 }}>
+              <button type="button" className="tap-scale" onClick={tryAgain} style={{ ...ctaStyle, width: 230 }}>
                 Try Again
               </button>
               <button type="button" className="tap-scale" onClick={exitGame} style={{ ...secondaryStyle, width: 130, minHeight: 40 }}>
@@ -522,7 +522,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
             </div>
           )}
 
-          {/* ---- practice intro / done: Fumi centre stage ---- */}
+          {/* ---- trial round done: Fumi centre stage ---- */}
           {overlay && (
             <div style={{ position: "absolute", inset: 0, zIndex: 40, background: "rgba(6,30,60,0.55)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "0 26px", animation: "bubble-pop 400ms var(--ease-pop) both" }}>
               {tutorial?.phase === "done" && <Confetti />}
@@ -557,7 +557,7 @@ export function RiverRoutesGame({ ageBand, onExit }: RiverRoutesGameProps) {
             <button type="button" className="tap-scale" onClick={playAgain} style={{ ...secondaryStyle, flex: 1 }}>
               Play Again
             </button>
-            <button type="button" className="tap-scale" onClick={onExit} style={{ ...ctaStyle, flex: 1, fontSize: 19, minHeight: 50 }}>
+            <button type="button" className="tap-scale" onClick={onExit} style={{ ...ctaStyle, flex: 1 }}>
               Finish
             </button>
           </div>
@@ -600,7 +600,7 @@ function StartScreen({ onPlay }: { onPlay: () => void }) {
           <span style={{ position: "absolute", left: "50%", top: -9, marginLeft: -8, width: 14, height: 14, background: "#fff", transform: "rotate(45deg)", borderLeft: "2.5px solid #8fc3ea", borderTop: "2.5px solid #8fc3ea" }} />
         </div>
       </div>
-      <button type="button" className="tap-scale" onClick={onPlay} style={{ ...ctaStyle, position: "absolute", bottom: 60, left: "50%", marginLeft: -110, width: 220, fontSize: 28 }}>
+      <button type="button" className="tap-scale" onClick={onPlay} style={{ ...ctaStyle, position: "absolute", bottom: 60, left: "50%", marginLeft: -110, width: 220, fontSize: 21 }}>
         Play
       </button>
     </>

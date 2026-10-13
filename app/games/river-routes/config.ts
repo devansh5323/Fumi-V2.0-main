@@ -149,7 +149,6 @@ export const ASSETS = {
   fumi: "/games/river-routes/mascot/fumi.png",
   pause: "/games/river-routes/ui/pause.png",
   titlePlank: "/games/river-routes/ui/title-plank.png",
-  sendFlow: "/games/river-routes/ui/send-flow.png",
   tiles: {
     S: "/games/river-routes/tiles/start.webp",
     E: "/games/river-routes/tiles/end.webp",

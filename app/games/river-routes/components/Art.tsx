@@ -65,7 +65,7 @@ export function PieceImg({ symbol, size, style }: { symbol: PieceSymbol; size: n
 export function ProgressPill({ total, done, current, practice, width = 250 }: { total: number; done: number; current: number | null; practice: boolean; width?: number }) {
   return (
     <div role="progressbar" aria-label="Rounds completed" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} style={{ position: "relative", width, height: 46, borderRadius: 999, background: "linear-gradient(180deg, #2b5f95 0%, #1c4372 100%)", border: "2px solid #8fc3ea", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.25), 0 4px 10px rgba(0,30,70,0.45)" }}>
-      <div style={{ position: "absolute", left: "50%", top: -9, transform: "translateX(-50%)", padding: "1px 12px", borderRadius: 8, background: "linear-gradient(180deg, #2f6aa3 0%, #1f4a7c 100%)", border: "1.5px solid #8fc3ea", color: "#e8f5ff", fontSize: 10.5, fontWeight: 800, letterSpacing: 1.6, whiteSpace: "nowrap" }}>{practice ? "PRACTICE" : "RIVER RELAY"}</div>
+      <div style={{ position: "absolute", left: "50%", top: -9, transform: "translateX(-50%)", padding: "1px 12px", borderRadius: 8, background: "linear-gradient(180deg, #2f6aa3 0%, #1f4a7c 100%)", border: "1.5px solid #8fc3ea", color: "#e8f5ff", fontSize: 10.5, fontWeight: 800, letterSpacing: 1.6, whiteSpace: "nowrap" }}>{practice ? "TRIAL ROUND" : "RIVER RELAY"}</div>
       <div style={{ position: "absolute", left: 22, right: 22, top: 24, height: 3, borderRadius: 2, background: "rgba(160,205,240,0.55)" }} />
       <div style={{ position: "absolute", left: 14, right: 14, top: 13, display: "flex", justifyContent: "space-between" }}>
         {Array.from({ length: total }, (_, i) => {
@@ -124,44 +124,54 @@ export function ImageButton({ src, label, onClick, width = 46, height = 43 }: { 
   );
 }
 
-// The reference's golden "SEND FLOW" pill.
-export function SendFlowButton({ onClick, enabled, glow }: { onClick: () => void; enabled: boolean; glow: boolean }) {
+// Send Flow: a plain text button like the other CTAs (greyed out until
+// every piece is on the board).
+export function SendFlowButton({ onClick, enabled }: { onClick: () => void; enabled: boolean }) {
   return (
     <button
       type="button"
       className={enabled ? "tap-scale" : undefined}
-      aria-label="Send Flow"
       aria-disabled={!enabled}
       onClick={onClick}
-      style={{ width: 224, height: 60, padding: 0, border: "none", background: "none", cursor: enabled ? "pointer" : "default", filter: enabled ? "drop-shadow(0 5px 8px rgba(0,30,70,0.45))" : "grayscale(0.85) brightness(0.9) opacity(0.75)", animation: enabled && glow ? "rr-cta-pulse 1.3s ease-in-out infinite" : undefined }}
+      style={{ ...ctaStyle, width: 224, ...(enabled ? null : ctaDisabled) }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={ASSETS.sendFlow} alt="" style={{ width: 224, height: 60, objectFit: "contain" }} />
+      Send Flow
     </button>
   );
 }
 
+// CTAs: simple, flat, text only.
 export const ctaStyle: React.CSSProperties = {
-  minHeight: 54,
-  border: "3px solid #c98a0c",
-  borderRadius: 999,
-  background: "linear-gradient(180deg, #ffe89a 0%, #ffd23f 48%, #f5b81b 52%, #ffc93a 100%)",
-  color: NAVY,
-  fontFamily: TEXT_DISPLAY,
-  fontSize: 21,
+  minHeight: 52,
+  padding: "0 22px",
+  border: "none",
+  borderRadius: 14,
+  background: "#1f6fd1",
+  color: "#ffffff",
+  fontFamily: "var(--font-body), system-ui",
+  fontSize: 19,
   fontWeight: 800,
   cursor: "pointer",
-  boxShadow: "inset 0 3px 0 rgba(255,255,255,0.6), 0 6px 0 #b77a08, 0 12px 20px rgba(0,30,70,0.35)",
+  boxShadow: "0 3px 8px rgba(0,30,70,0.25)",
+};
+
+export const ctaDisabled: React.CSSProperties = {
+  background: "#a9bccf",
+  color: "#eef3f8",
+  boxShadow: "none",
+  cursor: "default",
 };
 
 export const secondaryStyle: React.CSSProperties = {
   minHeight: 46,
-  border: "2px solid #8fc3ea",
-  borderRadius: 999,
-  background: "linear-gradient(180deg, #2b5f95 0%, #1c4372 100%)",
-  color: "#eaf6ff",
+  padding: "0 18px",
+  border: "2px solid #1f6fd1",
+  borderRadius: 14,
+  background: "#ffffff",
+  color: "#1f6fd1",
+  fontFamily: "var(--font-body), system-ui",
   fontWeight: 800,
-  fontSize: 15,
+  fontSize: 16,
   cursor: "pointer",
 };
 
