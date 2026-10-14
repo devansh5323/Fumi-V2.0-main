@@ -7,6 +7,7 @@ import { TwinCurrentGame } from "./games/twin-current";
 import { MinecartEscapeGame } from "./games/minecart-escape";
 import { LanternGridGame } from "./games/lantern-grid";
 import { RiverRoutesGame } from "./games/river-routes";
+import { DecoyGroveGame } from "./games/decoy-grove";
 import { PhoneFrame, PHONE_SCREEN_SIZE } from "./components/PhoneFrame";
 import { GamePicker, type GameEntry } from "./components/GamePicker";
 
@@ -60,6 +61,14 @@ const GAMES: GameEntry[] = [
     art: "/games/river-routes/tiles/start.webp",
     accent: "#4fc3ff",
   },
+  {
+    id: "decoy-grove",
+    title: "Decoy Grove",
+    tagline: "Spot the one object that doesn't belong — fast!",
+    skills: "Visual search · Processing speed",
+    art: "/games/decoy-grove/objects/firefly-blue.webp",
+    accent: "#f2a531",
+  },
 
 ];
 
@@ -96,6 +105,7 @@ export default function Home() {
           {activeGame === "minecart-escape" && <MinecartEscapeGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "lantern-grid" && <LanternGridGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
           {activeGame === "river-routes" && <RiverRoutesGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
+          {activeGame === "decoy-grove" && <DecoyGroveGame key={launchCount} ageBand="6-10" onExit={exitToPicker} />}
         </div>
       </PhoneFrame>
     </main>

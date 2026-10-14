@@ -14,6 +14,7 @@ screen-based experience presented inside a phone-frame device mockup.
 | 4 | Minecart Escape | [`app/games/minecart-escape/`](app/games/minecart-escape/README.md) | Visual scanning, vocabulary, sustained search (word search) |
 | 5 | Lantern Grid | [`app/games/lantern-grid/`](app/games/lantern-grid/README.md) | Logical reasoning, pattern completion |
 | 6 | River Routes | [`app/games/river-routes/`](app/games/river-routes/README.md) | Planning, spatial reasoning |
+| 7 | Decoy Grove | [`app/games/decoy-grove/`](app/games/decoy-grove/README.md) | Visual search, processing speed |
 
 ## Tech stack
 
@@ -91,7 +92,7 @@ one game's folder and understand it without reading any other game's code.
 
 ## Game results backend (local)
 
-Signal Watch, Twin Current, Minecart Escape, Lantern Grid and River Routes send every completed session to a small
+Signal Watch, Twin Current, Minecart Escape, Lantern Grid, River Routes and Decoy Grove send every completed session to a small
 local backend built into the app (Next.js route handlers in
 `app/api/results/`). The data is stored on disk as one JSON line per
 session:
@@ -113,7 +114,7 @@ With `pnpm dev` running, engineers can pull the data from:
 | `/api/results` | Which games have data, session counts, links |
 | `/api/results/<game>` | All sessions, full JSON (every metric plus per-trial data) |
 | `/api/results/<game>?format=csv` | One row per session: every summary metric, flattened (`metrics.detectionAccuracyPct`, `metrics.performanceByBlock.0.detected`, …) |
-| `/api/results/<game>?format=csv&level=trials` | One row per trial: each signal (Signal Watch), each scored round (Twin Current) or each word per round, found or missed (Minecart Escape), each puzzle (Lantern Grid) or each round (River Routes) |
+| `/api/results/<game>?format=csv&level=trials` | One row per trial: each signal (Signal Watch), each scored round (Twin Current) or each word per round, found or missed (Minecart Escape), each puzzle (Lantern Grid) or each round (River Routes, Decoy Grove) |
 
 `<game>` is `signal-watch`, `twin-current` or `minecart-escape`. Sessions are written with a
 `sessionId` (UUID) and a `receivedAt` timestamp. To reset the data, delete

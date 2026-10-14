@@ -688,6 +688,22 @@ button {
   100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 0; }
 }
 
+/* Decoy Grove */
+@keyframes dg-round-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes dg-drift-left {
+  0% { transform: translateX(10px); }
+  100% { transform: translateX(-10px); }
+}
+
+@keyframes dg-drift-right {
+  0% { transform: translateX(-10px); }
+  100% { transform: translateX(10px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
