@@ -32,6 +32,7 @@ export type RoundSpec = {
   id: number; // 1..25, the sheet's row
   sheet: string; // the sheet's "Objects to include", for checking
   answer: string; // the sheet's "Odd one out"
+  adjusted?: string; // set when the sheet row had no single odd object: what was flipped to make the "1" item unique
   decoys: ObjectSpec[];
   odd: ObjectSpec; // count is always 1
 };

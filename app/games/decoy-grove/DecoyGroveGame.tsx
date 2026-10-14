@@ -274,14 +274,14 @@ export function DecoyGroveGame({ ageBand, onExit }: DecoyGroveGameProps) {
             </div>
           </div>
 
-          {/* level N / 25 (each level has 4 s, timed in the background) */}
+          {/* level N / total (each level has 3 s, timed in the background) */}
           <div style={{ position: "absolute", left: 14, right: 14, top: SAFE_AREA_TOP + 56, display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ color: "#fff4dc", fontWeight: 800, fontSize: 13, textShadow: "0 1px 3px rgba(0,0,0,0.7)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-              Level {ROUNDS[roundIdx].id} / {ROUNDS.length}
+              Level {roundIdx + 1} / {ROUNDS.length}
             </span>
           </div>
 
-          <div key={`${roundIdx}-${layoutSeq}`} role="group" aria-label={`Round ${ROUNDS[roundIdx].id}: find the odd one out`} style={{ position: "absolute", inset: 0, pointerEvents: "none", animation: "dg-round-in 260ms ease-out both", visibility: paused ? "hidden" : "visible" }}>
+          <div key={`${roundIdx}-${layoutSeq}`} role="group" aria-label={`Level ${roundIdx + 1}: find the odd one out`} style={{ position: "absolute", inset: 0, pointerEvents: "none", animation: "dg-round-in 260ms ease-out both", visibility: paused ? "hidden" : "visible" }}>
             {placed.map((p) => {
               const fb = feedback && (feedback.tappedKey === p.key ? (feedback.correct ? "right" : "wrong") : !feedback.correct && p.isOdd ? "reveal" : null);
               return (
@@ -297,14 +297,12 @@ export function DecoyGroveGame({ ageBand, onExit }: DecoyGroveGameProps) {
                   style={{ position: "absolute", left: p.x - p.size / 2, top: p.y - p.size / 2, width: p.size, height: p.size, padding: 0, border: "none", background: "none", cursor: "pointer", touchAction: "manipulation", pointerEvents: "auto" }}
                 >
                   <div style={{ width: "100%", height: "100%", animation: p.drift ? `dg-drift-${p.drift} 2.4s ease-in-out infinite` : undefined }}>
-                    {/* soft halo keeps every object readable on sky and path */}
-                    <div style={{ position: "absolute", inset: "4%", borderRadius: "50%", background: "radial-gradient(circle, rgba(10,18,60,0.5) 0%, rgba(10,18,60,0.28) 55%, rgba(10,18,60,0) 72%)" }} />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={objectSrc(p.kind)}
                       alt=""
                       draggable={false}
-                      style={{ position: "relative", width: "100%", height: "100%", pointerEvents: "none", transform: `${p.facing === "left" ? "scaleX(-1)" : ""} ${p.upsideDown ? "rotate(180deg)" : ""}`, filter: "drop-shadow(0 0 2px rgba(255,255,255,0.75)) drop-shadow(0 3px 4px rgba(0,0,0,0.45))", animation: fb === "wrong" ? "lg-shake 420ms ease-in-out" : undefined }}
+                      style={{ position: "relative", width: "100%", height: "100%", pointerEvents: "none", transform: `${p.facing === "left" ? "scaleX(-1)" : ""} ${p.upsideDown ? "rotate(180deg)" : ""}`, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.5))", animation: fb === "wrong" ? "lg-shake 420ms ease-in-out" : undefined }}
                     />
                     {fb && <div style={{ position: "absolute", inset: -5, borderRadius: "50%", border: `4px solid ${fb === "right" ? "#5ee37a" : fb === "wrong" ? "#ff5a4e" : "#ffd23f"}`, boxShadow: `0 0 16px ${fb === "right" ? "rgba(94,227,122,0.9)" : fb === "wrong" ? "rgba(255,90,78,0.9)" : "rgba(255,210,63,0.95)"}`, animation: fb === "reveal" ? "glow-pulse 600ms ease-in-out infinite" : "bubble-pop 260ms var(--ease-pop) both" }} />}
                     {fb === "wrong" && <span style={{ position: "absolute", right: -4, top: -4, width: 26, height: 26, borderRadius: "50%", background: "#e5483c", border: "2px solid #fff", color: "#fff", fontSize: 15, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</span>}

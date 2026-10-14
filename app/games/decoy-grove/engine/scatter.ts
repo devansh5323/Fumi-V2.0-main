@@ -8,11 +8,11 @@ export function layoutRound(round: RoundSpec, rand: () => number = Math.random):
   const items = [...round.decoys.flatMap((d) => Array.from({ length: d.count }, () => ({ ...d, isOdd: false }))), { ...round.odd, isOdd: true }];
   const n = items.length;
   // enough cells for ~1.5x the objects, never fewer than 3 columns
-  const cols = n <= 6 ? 3 : 4;
-  const rows = Math.max(Math.ceil((n * 1.5) / cols), Math.ceil(n / cols));
+  const cols = n <= 6 ? 3 : n <= 16 ? 4 : 5;
+  const rows = Math.max(Math.ceil((n * 1.4) / cols), Math.ceil(n / cols));
   const cw = FIELD.width / cols;
   const ch = FIELD.height / rows;
-  const size = Math.min(84, cw * 0.74, ch * 0.74);
+  const size = Math.min(62, cw * 0.66, ch * 0.66);
   const cells = Array.from({ length: cols * rows }, (_, i) => i);
   for (let i = cells.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));

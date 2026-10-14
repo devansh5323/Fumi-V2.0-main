@@ -34,15 +34,29 @@ export const ROUNDS: RoundSpec[] = [
   { id: 22, sheet: "13 orange fireflies, 1 blue firefly", answer: "Blue firefly", decoys: [o("firefly-orange", 13)], odd: o("firefly-blue", 1) },
   { id: 23, sheet: "6 right wooden arrows, 1 left wooden arrow, 5 right facing masks", answer: "1 left wooden arrow", decoys: [o("arrow-wooden", 6, { facing: "right" }), o("mask-wooden", 5, { facing: "right" })], odd: o("arrow-wooden", 1, { facing: "left" }) },
   { id: 24, sheet: "10 top facing purple mushrooms, 5 top facing green mushroom, 1 downward facing purple mushroom", answer: "1 downward facing purple mushroom", decoys: [o("mushroom-purple", 10), o("mushroom-green", 5)], odd: o("mushroom-purple", 1, { upsideDown: true }) },
-  { id: 25, sheet: "10 left moving orange fireflies, 5 left moving blue firefly, 1 right moving orange firefly", answer: "1 right moving orange firefly", decoys: [o("firefly-orange", 10, { facing: "left", drift: "left" }), o("firefly-blue", 5, { facing: "left", drift: "left" })], odd: o("firefly-orange", 1, { facing: "right", drift: "right" }) },
+  // fireflies only face left / right — they don't move
+  { id: 25, sheet: "10 left moving orange fireflies, 5 left moving blue firefly, 1 right moving orange firefly", answer: "1 right moving orange firefly", decoys: [o("firefly-orange", 10, { facing: "left" }), o("firefly-blue", 5, { facing: "left" })], odd: o("firefly-orange", 1, { facing: "right" }) },
+  // Rows 26-33: as written they had no single odd object, so (as agreed) the
+  // row's "1 ..." item is the odd one and the group that matched it is
+  // flipped to the other direction. Counts are unchanged.
+  { id: 26, sheet: "10 left orange fireflies, 10 right orange fireflies, 1 left orange firefly", answer: "Right facing orange fireflies", adjusted: "the 10 left fireflies face right; the odd one is the left-facing firefly", decoys: [o("firefly-orange", 10, { facing: "right" }), o("firefly-orange", 10, { facing: "right" })], odd: o("firefly-orange", 1, { facing: "left" }) },
+  { id: 27, sheet: "10 left blue firefly, 10 right blue firefly, 1 right blue firefly", answer: "Left facing blue firefly", adjusted: "the 10 right fireflies face left; the odd one is the right-facing firefly", decoys: [o("firefly-blue", 10, { facing: "left" }), o("firefly-blue", 10, { facing: "left" })], odd: o("firefly-blue", 1, { facing: "right" }) },
+  { id: 28, sheet: "10 top facing purple mushrooms, 10 downward facing purple mushrooms, 1 downward facing purple mushroom", answer: "Top facing purple mushrooms", adjusted: "the 10 downward mushrooms face up; the odd one is the downward mushroom", decoys: [o("mushroom-purple", 10), o("mushroom-purple", 10)], odd: o("mushroom-purple", 1, { upsideDown: true }) },
+  { id: 29, sheet: "10 top facing green mushroom, 10 downward facing green mushroom, 1 top facing green mushroom", answer: "Downward facing green mushroom", adjusted: "the 10 top-facing mushrooms face down; the odd one is the top-facing mushroom", decoys: [o("mushroom-green", 10, { upsideDown: true }), o("mushroom-green", 10, { upsideDown: true })], odd: o("mushroom-green", 1) },
+  { id: 30, sheet: "10 right wooden arrows, 10 left wooden arrows, 1 left wooden arrow", answer: "Right wooden arrows", adjusted: "the 10 left arrows point right; the odd one is the left arrow", decoys: [o("arrow-wooden", 10, { facing: "right" }), o("arrow-wooden", 10, { facing: "right" })], odd: o("arrow-wooden", 1, { facing: "left" }) },
+  { id: 31, sheet: "7 left orange fireflies, 7 right orange fireflies, 6 left blue firefly, 1 right orange firefly", answer: "Right facing orange firefly", adjusted: "the 7 right orange fireflies face left; the odd one is the right-facing orange firefly", decoys: [o("firefly-orange", 7, { facing: "left" }), o("firefly-orange", 7, { facing: "left" }), o("firefly-blue", 6, { facing: "left" })], odd: o("firefly-orange", 1, { facing: "right" }) },
+  { id: 32, sheet: "7 top facing purple mushrooms, 7 downward facing purple mushrooms, 6 top facing green mushroom, 1 downward facing purple mushroom", answer: "Top facing purple mushrooms", adjusted: "the 7 downward purple mushrooms face up; the odd one is the downward purple mushroom", decoys: [o("mushroom-purple", 7), o("mushroom-purple", 7), o("mushroom-green", 6)], odd: o("mushroom-purple", 1, { upsideDown: true }) },
+  { id: 33, sheet: "7 right wooden arrows, 7 left wooden arrows, 6 right wooden arrows, 1 left wooden arrow", answer: "Left wooden arrow", adjusted: "the 7 left arrows point right; the odd one is the left arrow", decoys: [o("arrow-wooden", 7, { facing: "right" }), o("arrow-wooden", 7, { facing: "right" }), o("arrow-wooden", 6, { facing: "right" })], odd: o("arrow-wooden", 1, { facing: "left" }) },
+  { id: 34, sheet: "7 left orange fireflies, 7 right orange fireflies, 6 left blue firefly, 1 right blue firefly", answer: "Right facing blue firefly", decoys: [o("firefly-orange", 7, { facing: "left" }), o("firefly-orange", 7, { facing: "right" }), o("firefly-blue", 6, { facing: "left" })], odd: o("firefly-blue", 1, { facing: "right" }) },
+  { id: 35, sheet: "7 top facing purple mushrooms, 7 downward facing purple mushrooms, 6 top facing green mushroom, 1 downward facing green mushroom", answer: "Downward facing green mushroom", decoys: [o("mushroom-purple", 7), o("mushroom-purple", 7, { upsideDown: true }), o("mushroom-green", 6)], odd: o("mushroom-green", 1, { upsideDown: true }) },
 ];
 
 // ---------------------------------------------------------------------------
 // Rules (from the Star Search reference, as agreed)
 // ---------------------------------------------------------------------------
 
-export const TIME_LIMIT_MS = 100_000; // 100 s for the whole game
-export const LEVEL_TIME_MS = 4_000; // each level must be answered within 4 s, or it's missed (not shown on screen)
+export const TIME_LIMIT_MS = 90_000; // 90 s for the whole game
+export const LEVEL_TIME_MS = 3_000; // each level must be answered within 3 s, or it's missed (not shown on screen)
 export const BASE_POINTS = 10;
 export const STREAK_STEP = 3; // every 3 correct in a row raises the multiplier
 export const MAX_MULTIPLIER = 5;
@@ -58,7 +72,7 @@ export function multiplierFor(streak: number): number {
 // ---------------------------------------------------------------------------
 
 export const COPY = {
-  intro: "One object in the grove doesn't belong. Find the odd one out and tap it — you have 4 seconds for each level!",
+  intro: "One object in the grove doesn't belong. Find the odd one out and tap it — you have 3 seconds for each level!",
   timeUp: "Time's up!",
   allDone: "You found every odd one out!", // all 25 right
   finished: "You made it through the grove!", // reached the end with some misses
@@ -90,7 +104,7 @@ ROUNDS.forEach((r, i) => {
   const fail = (m: string): never => {
     throw new Error(`Decoy Grove round ${r.id}: ${m}`);
   };
-  if (r.id !== i + 1) fail("rounds must be numbered 1-25 in order");
+  if (i > 0 && r.id <= ROUNDS[i - 1].id) fail("round ids (the sheet's rows) must go up in order");
   if (r.odd.count !== 1) fail("the odd one out must appear once");
   // (compared as sets: the sheet sometimes lists the odd one mid-row, e.g. round 23)
   const sheetCounts = (r.sheet.match(/\d+/g) ?? []).map(Number).sort((x, y) => x - y);
